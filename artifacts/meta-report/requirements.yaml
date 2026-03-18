@@ -1,0 +1,18 @@
+packages:
+  "xlsx": "Parsing Meta Ads Excel reports in the browser"
+  "papaparse": "Exporting simplified data to CSV"
+  "@types/papaparse": "TypeScript definitions for papaparse"
+  "framer-motion": "Smooth page transitions and component entry animations"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility function to efficiently merge Tailwind CSS classes"
+  "lucide-react": "Beautiful consistent icons for the dashboard"
+
+images:
+  - path: "artifacts/meta-report/public/images/hero-abstract.png"
+    description: "Abstract 3D geometric mesh in deep dark blue and neon blue colors, professional corporate technology vibe, clean and minimal, dark background"
+    aspect_ratio: "16:9"
+
+notes:
+  - "App is strictly frontend-only, processing Excel files entirely within the browser"
+  - "Using xlsx library for parsing raw Meta Ads reports"
+  - "Using papaparse for exporting the simplified view back to CSV"
