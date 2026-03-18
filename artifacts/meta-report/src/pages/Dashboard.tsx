@@ -9,12 +9,19 @@ import {
   Users, 
   Target,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  CheckCircle2,
+  TrendingUp,
+  Lightbulb,
+  ShieldAlert,
+  Info,
+  Star
 } from "lucide-react";
 import { 
   parseMetaReport, 
   exportToCSV, 
-  type ParsedReport 
+  type ParsedReport,
+  type AnalysisInsight
 } from "@/lib/excel-parser";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,6 +36,28 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+
+function InsightCard({ insight, index }: { insight: AnalysisInsight; index: number }) {
+  const config = {
+    positive: { icon: CheckCircle2, border: 'border-emerald-500/20', bg: 'bg-emerald-500/5', iconColor: 'text-emerald-400', badgeClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+    warning:  { icon: ShieldAlert,  border: 'border-amber-500/20',   bg: 'bg-amber-500/5',   iconColor: 'text-amber-400',   badgeClass: 'bg-amber-500/10  text-amber-400  border-amber-500/20'  },
+    info:     { icon: Info,         border: 'border-blue-500/20',    bg: 'bg-blue-500/5',    iconColor: 'text-blue-400',    badgeClass: 'bg-blue-500/10   text-blue-400   border-blue-500/20'   },
+  };
+  const { icon: Icon, border, bg, iconColor, badgeClass } = config[insight.type];
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.08 }}>
+      <div className={`rounded-xl border p-5 ${border} ${bg}`}>
+        <div className="flex items-start gap-4">
+          <div className={`mt-0.5 shrink-0 ${iconColor}`}><Icon className="w-5 h-5" /></div>
+          <div>
+            <p className="font-semibold text-foreground mb-1">{insight.title}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{insight.body}</p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 export default function Dashboard() {
   const [isDragging, setIsDragging] = useState(false);
@@ -239,6 +268,100 @@ export default function Dashboard() {
                   </motion.div>
                 ))}
               </div>
+
+              {/* ===== WRITTEN ANALYSIS SECTION ===== */}
+              {reportData.analysis && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                {/* Section header */}
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold">Performance Analysis</h2>
+                    <p className="text-xs text-muted-foreground">AI-generated insights from your report data</p>
+                  </div>
+                  <div className="ml-auto">
+                    <Badge className={`text-sm font-bold px-3 py-1 border ${
+                      reportData.analysis.verdict === 'excellent' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                      reportData.analysis.verdict === 'good'      ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
+                      reportData.analysis.verdict === 'fair'      ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+                                                                     'bg-red-500/10 text-red-400 border-red-500/30'
+                    }`}>
+                      {reportData.analysis.verdict === 'excellent' && <Star className="w-3.5 h-3.5 mr-1 inline" />}
+                      Overall: {reportData.analysis.verdictLabel}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Performance summary paragraph */}
+                <Card className="border-white/5 bg-card/50 mb-5">
+                  <CardContent className="p-6">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Campaign Overview</h3>
+                    <p className="text-base leading-relaxed text-foreground/90">{reportData.analysis.performanceSummary}</p>
+                  </CardContent>
+                </Card>
+
+                {/* Insight cards grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+                  {reportData.analysis.insights.map((insight, i) => (
+                    <InsightCard key={i} insight={insight} index={i} />
+                  ))}
+                </div>
+
+                {/* Customer / Audience breakdown */}
+                <Card className="border-white/5 bg-card/50 mb-5">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      <CardTitle className="text-base">Customer & Audience Breakdown</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <p className="text-sm leading-relaxed text-muted-foreground mb-5">{reportData.analysis.audienceSummary}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="rounded-lg bg-primary/5 border border-primary/10 p-4 text-center">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Primary Age Group</p>
+                        <p className="text-2xl font-bold text-primary">{reportData.analysis.primaryAgeGroup}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Most leads generated</p>
+                      </div>
+                      <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/10 p-4 text-center">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Best Value Audience</p>
+                        <p className="text-2xl font-bold text-emerald-400">{reportData.analysis.mostEfficientAgeGroup}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Lowest cost per lead</p>
+                      </div>
+                      <div className="rounded-lg bg-purple-500/5 border border-purple-500/10 p-4 text-center">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Top Campaign</p>
+                        <p className="text-lg font-bold text-purple-400 truncate">{reportData.analysis.topCampaign}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Most results delivered</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Recommendations */}
+                <Card className="border-white/5 bg-card/50">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <Lightbulb className="w-4 h-4 text-amber-400" />
+                      <CardTitle className="text-base">Recommendations</CardTitle>
+                    </div>
+                    <CardDescription>Actionable steps to improve performance</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <ul className="space-y-3">
+                      {reportData.analysis.recommendations.map((rec, i) => (
+                        <motion.li key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
+                          className="flex items-start gap-3 text-sm text-muted-foreground">
+                          <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 text-xs font-bold">{i + 1}</span>
+                          {rec}
+                        </motion.li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </motion.div>
+              )}
 
               {/* GRID: CAMPAIGN & AGE BREAKDOWN */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
