@@ -12,16 +12,25 @@ import {
   AlertCircle,
   CheckCircle2,
   TrendingUp,
+  TrendingDown,
   Lightbulb,
   ShieldAlert,
   Info,
-  Star
+  Star,
+  Rocket,
+  FlaskConical,
+  Trophy,
+  ChevronDown,
+  Gauge
 } from "lucide-react";
 import { 
   parseMetaReport, 
   exportToCSV, 
   type ParsedReport,
-  type AnalysisInsight
+  type AnalysisInsight,
+  type MetricAssessment,
+  type FunnelStage,
+  type Alert
 } from "@/lib/excel-parser";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,11 +48,11 @@ import { useToast } from "@/hooks/use-toast";
 
 function InsightCard({ insight, index }: { insight: AnalysisInsight; index: number }) {
   const config = {
-    positive: { icon: CheckCircle2, border: 'border-emerald-500/20', bg: 'bg-emerald-500/5', iconColor: 'text-emerald-400', badgeClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-    warning:  { icon: ShieldAlert,  border: 'border-amber-500/20',   bg: 'bg-amber-500/5',   iconColor: 'text-amber-400',   badgeClass: 'bg-amber-500/10  text-amber-400  border-amber-500/20'  },
-    info:     { icon: Info,         border: 'border-blue-500/20',    bg: 'bg-blue-500/5',    iconColor: 'text-blue-400',    badgeClass: 'bg-blue-500/10   text-blue-400   border-blue-500/20'   },
+    positive: { icon: CheckCircle2, border: 'border-emerald-500/20', bg: 'bg-emerald-500/5', iconColor: 'text-emerald-400' },
+    warning:  { icon: ShieldAlert,  border: 'border-amber-500/20',   bg: 'bg-amber-500/5',   iconColor: 'text-amber-400'   },
+    info:     { icon: Info,         border: 'border-blue-500/20',    bg: 'bg-blue-500/5',    iconColor: 'text-blue-400'    },
   };
-  const { icon: Icon, border, bg, iconColor, badgeClass } = config[insight.type];
+  const { icon: Icon, border, bg, iconColor } = config[insight.type];
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.08 }}>
       <div className={`rounded-xl border p-5 ${border} ${bg}`}>
@@ -56,6 +65,96 @@ function InsightCard({ insight, index }: { insight: AnalysisInsight; index: numb
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function MetricCard({ metric, index }: { metric: MetricAssessment; index: number }) {
+  const ratingConfig = {
+    good:    { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: 'Good' },
+    average: { color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/20',   label: 'Average' },
+    poor:    { color: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/20',     label: 'Poor' },
+  };
+  const cfg = ratingConfig[metric.rating];
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.07 }}>
+      <div className={`rounded-xl border p-5 ${cfg.border} bg-card`}>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <p className="font-semibold text-foreground text-sm">{metric.name}</p>
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color} border ${cfg.border}`}>{cfg.label}</span>
+        </div>
+        <p className={`text-2xl font-bold mb-2 ${cfg.color}`}>{metric.value}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">{metric.explanation}</p>
+      </div>
+    </motion.div>
+  );
+}
+
+function AlertCard({ alert, index }: { alert: Alert; index: number }) {
+  const severityConfig = {
+    high:   { icon: ShieldAlert, border: 'border-red-500/30',    bg: 'bg-red-500/5',    iconColor: 'text-red-400',    label: 'High Priority',   labelClass: 'bg-red-500/10 text-red-400 border-red-500/20' },
+    medium: { icon: AlertCircle, border: 'border-amber-500/30',  bg: 'bg-amber-500/5',  iconColor: 'text-amber-400',  label: 'Watch This',      labelClass: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+    low:    { icon: CheckCircle2,border: 'border-emerald-500/20',bg: 'bg-emerald-500/5',iconColor: 'text-emerald-400',label: 'All Good',        labelClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  };
+  const cfg = severityConfig[alert.severity];
+  const Icon = cfg.icon;
+  return (
+    <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.08 }}>
+      <div className={`rounded-xl border p-5 ${cfg.border} ${cfg.bg}`}>
+        <div className="flex items-start gap-4">
+          <div className={`mt-0.5 shrink-0 ${cfg.iconColor}`}><Icon className="w-5 h-5" /></div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <p className="font-semibold text-foreground">{alert.title}</p>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${cfg.labelClass}`}>{cfg.label}</span>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">{alert.text}</p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function FunnelViz({ stages }: { stages: FunnelStage[] }) {
+  const maxCount = stages[0]?.count ?? 1;
+  return (
+    <div className="space-y-3">
+      {stages.map((stage, i) => {
+        const widthPct = maxCount > 0 ? (stage.count / maxCount) * 100 : 0;
+        return (
+          <motion.div key={stage.label} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}>
+            <div className="flex items-center gap-3 mb-1">
+              <span className="text-xs font-medium text-muted-foreground w-6 text-right">{i + 1}</span>
+              <span className="text-sm font-semibold text-foreground">{stage.label}</span>
+              <span className="ml-auto text-sm font-bold text-foreground">{stage.count.toLocaleString()}</span>
+              {stage.pctFromPrev !== undefined && (
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${stage.pctFromPrev < 1 ? 'bg-amber-500/10 text-amber-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                  {stage.pctFromPrev.toFixed(2)}%
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-6" />
+              <div className="flex-1 bg-white/5 rounded-full h-3 overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-blue-500"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${widthPct}%` }}
+                  transition={{ delay: i * 0.1 + 0.2, duration: 0.6, ease: 'easeOut' }}
+                />
+              </div>
+            </div>
+            {i < stages.length - 1 && (
+              <div className="flex items-center gap-3 mt-1">
+                <div className="w-6" />
+                <ChevronDown className="w-4 h-4 text-muted-foreground/40 ml-1" />
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1 ml-9 leading-relaxed">{stage.note}</p>
+          </motion.div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -269,53 +368,137 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              {/* ===== WRITTEN ANALYSIS SECTION ===== */}
+              {/* ===== FULL PERFORMANCE ANALYSIS ===== */}
               {reportData.analysis && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                {/* Section header */}
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <TrendingUp className="w-5 h-5 text-primary" />
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-6">
+
+                {/* ── 1. EXECUTIVE SUMMARY ───────────────────────────────── */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-primary/10"><Trophy className="w-5 h-5 text-primary" /></div>
+                    <div>
+                      <h2 className="text-lg font-bold">Executive Summary</h2>
+                      <p className="text-xs text-muted-foreground">High-level verdict on your campaign performance</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-lg font-bold">Performance Analysis</h2>
-                    <p className="text-xs text-muted-foreground">AI-generated insights from your report data</p>
+                  <Card className="border-white/5 bg-card/50">
+                    <CardContent className="p-6">
+                      {/* Rating + Profitability row */}
+                      <div className="flex flex-wrap items-center gap-4 mb-6">
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-16 h-16">
+                            <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+                              <circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" className="text-white/5" strokeWidth="8"/>
+                              <circle cx="32" cy="32" r="26" fill="none"
+                                stroke={reportData.analysis.verdict === 'excellent' ? '#34d399' : reportData.analysis.verdict === 'good' ? '#60a5fa' : reportData.analysis.verdict === 'fair' ? '#fbbf24' : '#f87171'}
+                                strokeWidth="8"
+                                strokeDasharray={`${(reportData.analysis.rating / 10) * 163.4} 163.4`}
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className={`text-lg font-black ${reportData.analysis.verdictColor}`}>{reportData.analysis.rating}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider">Performance Score</p>
+                            <p className={`text-xl font-bold ${reportData.analysis.verdictColor}`}>{reportData.analysis.verdictLabel}</p>
+                            <p className="text-xs text-muted-foreground">out of 10</p>
+                          </div>
+                        </div>
+                        <div className="h-12 w-px bg-white/10 hidden sm:block" />
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Campaign Verdict</p>
+                          <Badge className={`text-sm font-bold px-4 py-1.5 border ${
+                            reportData.analysis.profitabilityVerdict === 'profitable'     ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                            reportData.analysis.profitabilityVerdict === 'break-even'    ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+                                                                                           'bg-red-500/10 text-red-400 border-red-500/30'
+                          }`}>
+                            {reportData.analysis.profitabilityVerdict === 'profitable' ? '✓ Profitable' :
+                             reportData.analysis.profitabilityVerdict === 'break-even' ? '~ Break-Even' : '✗ Underperforming'}
+                          </Badge>
+                        </div>
+                      </div>
+                      {/* Top 3 Positives + Issues */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Top 3 Positives
+                          </p>
+                          <ul className="space-y-2">
+                            {reportData.analysis.top3Positives.map((p, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                <span className="shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5" />
+                                {p}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <ShieldAlert className="w-3.5 h-3.5" /> Top 3 Issues
+                          </p>
+                          <ul className="space-y-2">
+                            {reportData.analysis.top3Issues.map((issue, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-400 mt-1.5" />
+                                {issue}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* ── 2. PERFORMANCE OVERVIEW ────────────────────────────── */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-primary/10"><TrendingUp className="w-5 h-5 text-primary" /></div>
+                    <div>
+                      <h2 className="text-lg font-bold">Performance Overview</h2>
+                      <p className="text-xs text-muted-foreground">Written summary and key diagnosis</p>
+                    </div>
                   </div>
-                  <div className="ml-auto">
-                    <Badge className={`text-sm font-bold px-3 py-1 border ${
-                      reportData.analysis.verdict === 'excellent' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
-                      reportData.analysis.verdict === 'good'      ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
-                      reportData.analysis.verdict === 'fair'      ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
-                                                                     'bg-red-500/10 text-red-400 border-red-500/30'
-                    }`}>
-                      {reportData.analysis.verdict === 'excellent' && <Star className="w-3.5 h-3.5 mr-1 inline" />}
-                      Overall: {reportData.analysis.verdictLabel}
-                    </Badge>
+                  <Card className="border-white/5 bg-card/50 mb-4">
+                    <CardContent className="p-6">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Campaign Summary</h3>
+                      <p className="text-base leading-relaxed text-foreground/90">{reportData.analysis.performanceSummary}</p>
+                    </CardContent>
+                  </Card>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {reportData.analysis.insights.map((insight, i) => (
+                      <InsightCard key={i} insight={insight} index={i} />
+                    ))}
                   </div>
                 </div>
 
-                {/* Performance summary paragraph */}
-                <Card className="border-white/5 bg-card/50 mb-5">
-                  <CardContent className="p-6">
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Campaign Overview</h3>
-                    <p className="text-base leading-relaxed text-foreground/90">{reportData.analysis.performanceSummary}</p>
-                  </CardContent>
-                </Card>
-
-                {/* Insight cards grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
-                  {reportData.analysis.insights.map((insight, i) => (
-                    <InsightCard key={i} insight={insight} index={i} />
-                  ))}
+                {/* ── 3. CORE METRICS ASSESSMENT ────────────────────────── */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-primary/10"><Gauge className="w-5 h-5 text-primary" /></div>
+                    <div>
+                      <h2 className="text-lg font-bold">Core Metrics Assessment</h2>
+                      <p className="text-xs text-muted-foreground">Each metric rated Good / Average / Poor with an explanation</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {reportData.analysis.metricsAssessment.map((m, i) => (
+                      <MetricCard key={i} metric={m} index={i} />
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3 italic">Note: CPC, CTR, and ROAS are not available in this export — request a more detailed report from Meta Ads Manager for a complete picture.</p>
                 </div>
 
-                {/* Customer / Audience breakdown */}
-                <Card className="border-white/5 bg-card/50 mb-5">
+                {/* ── 4. AUDIENCE INSIGHTS ──────────────────────────────── */}
+                <Card className="border-white/5 bg-card/50">
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4 text-primary" />
-                      <CardTitle className="text-base">Customer & Audience Breakdown</CardTitle>
+                      <CardTitle className="text-base">Audience Insights</CardTitle>
                     </div>
+                    <CardDescription>Breakdown of who is engaging with your ads</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
                     <p className="text-sm leading-relaxed text-muted-foreground mb-5">{reportData.analysis.audienceSummary}</p>
@@ -339,14 +522,94 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Recommendations */}
+                {/* ── 5. FUNNEL ANALYSIS ────────────────────────────────── */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-primary/10"><TrendingDown className="w-5 h-5 text-primary" /></div>
+                    <div>
+                      <h2 className="text-lg font-bold">Funnel Analysis</h2>
+                      <p className="text-xs text-muted-foreground">Where your audience is dropping off in the customer journey</p>
+                    </div>
+                  </div>
+                  <Card className="border-white/5 bg-card/50">
+                    <CardContent className="p-6">
+                      <FunnelViz stages={reportData.analysis.funnelStages} />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* ── 6. ALERTS & RED FLAGS ─────────────────────────────── */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-red-500/10"><ShieldAlert className="w-5 h-5 text-red-400" /></div>
+                    <div>
+                      <h2 className="text-lg font-bold">Alerts & Red Flags</h2>
+                      <p className="text-xs text-muted-foreground">Issues that need your attention</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {reportData.analysis.alerts.map((alert, i) => (
+                      <AlertCard key={i} alert={alert} index={i} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── 7. SCALING OPPORTUNITIES ──────────────────────────── */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-emerald-500/10"><Rocket className="w-5 h-5 text-emerald-400" /></div>
+                    <div>
+                      <h2 className="text-lg font-bold">Scaling Opportunities</h2>
+                      <p className="text-xs text-muted-foreground">What to increase, duplicate, or pause to grow results</p>
+                    </div>
+                  </div>
+                  <Card className="border-white/5 bg-card/50">
+                    <CardContent className="p-6">
+                      <ul className="space-y-3">
+                        {reportData.analysis.scalingOpportunities.map((opp, i) => (
+                          <motion.li key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
+                            className="flex items-start gap-3 text-sm text-muted-foreground">
+                            <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center text-emerald-400 text-xs font-bold">{i + 1}</span>
+                            {opp}
+                          </motion.li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* ── 8. TESTING SUGGESTIONS ────────────────────────────── */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-blue-500/10"><FlaskConical className="w-5 h-5 text-blue-400" /></div>
+                    <div>
+                      <h2 className="text-lg font-bold">Testing Suggestions</h2>
+                      <p className="text-xs text-muted-foreground">Experiments to improve performance over time</p>
+                    </div>
+                  </div>
+                  <Card className="border-white/5 bg-card/50">
+                    <CardContent className="p-6">
+                      <ul className="space-y-3">
+                        {reportData.analysis.testingSuggestions.map((sug, i) => (
+                          <motion.li key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
+                            className="flex items-start gap-3 text-sm text-muted-foreground">
+                            <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-blue-400/10 border border-blue-400/20 flex items-center justify-center text-blue-400 text-xs font-bold">{i + 1}</span>
+                            {sug}
+                          </motion.li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* ── 9. OPTIMISATION RECOMMENDATIONS ──────────────────── */}
                 <Card className="border-white/5 bg-card/50">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
                       <Lightbulb className="w-4 h-4 text-amber-400" />
-                      <CardTitle className="text-base">Recommendations</CardTitle>
+                      <CardTitle className="text-base">Optimisation Recommendations</CardTitle>
                     </div>
-                    <CardDescription>Actionable steps to improve performance</CardDescription>
+                    <CardDescription>Clear, actionable next steps to improve your campaigns</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
                     <ul className="space-y-3">
@@ -360,6 +623,7 @@ export default function Dashboard() {
                     </ul>
                   </CardContent>
                 </Card>
+
               </motion.div>
               )}
 

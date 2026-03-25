@@ -49,16 +49,64 @@ export interface AnalysisInsight {
   body: string;
 }
 
+export interface MetricAssessment {
+  name: string;
+  value: string;
+  rating: 'good' | 'average' | 'poor';
+  explanation: string;
+}
+
+export interface FunnelStage {
+  label: string;
+  count: number;
+  pctFromPrev?: number;
+  note: string;
+}
+
+export interface Alert {
+  severity: 'high' | 'medium' | 'low';
+  title: string;
+  text: string;
+}
+
 export interface ReportAnalysis {
+  // Executive Summary
+  rating: number;
+  profitabilityVerdict: 'profitable' | 'break-even' | 'underperforming';
+  top3Positives: string[];
+  top3Issues: string[];
+
+  // Verdict (existing)
   verdict: 'excellent' | 'good' | 'fair' | 'poor';
   verdictLabel: string;
   verdictColor: string;
+
+  // Written summaries
   performanceSummary: string;
-  insights: AnalysisInsight[];
   audienceSummary: string;
+
+  // Automated insights
+  insights: AnalysisInsight[];
+
+  // Core metrics
+  metricsAssessment: MetricAssessment[];
+
+  // Funnel
+  funnelStages: FunnelStage[];
+
+  // Audience
   primaryAgeGroup: string;
   mostEfficientAgeGroup: string;
   topCampaign: string;
+
+  // Alerts
+  alerts: Alert[];
+
+  // Scaling & testing
+  scalingOpportunities: string[];
+  testingSuggestions: string[];
+
+  // Existing recommendations
   recommendations: string[];
 }
 
@@ -85,9 +133,19 @@ function generateAnalysis(
   const { totalSpend, totalResults, totalImpressions, totalReach } = summary;
   const overallCPR = totalResults > 0 ? totalSpend / totalResults : 0;
   const avgFrequency = totalReach > 0 ? totalImpressions / totalReach : 0;
+  const cpm = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
+  const reachToResultRate = totalReach > 0 ? (totalResults / totalReach) * 100 : 0;
+  const impressionToResultRate = totalImpressions > 0 ? (totalResults / totalImpressions) * 100 : 0;
 
-  // Determine performance verdict based on CPR for lead gen (ZAR)
-  // <R50 = excellent, <R80 = good, <R120 = fair, >R120 = poor
+  const topAgeByResults = byAge.filter(a => a.name !== 'Unknown').sort((a, b) => b.Results - a.Results)[0];
+  const topAgeByEfficiency = byAge.filter(a => a.name !== 'Unknown' && a.Results > 0).sort((a, b) => a.CostPerResult - b.CostPerResult)[0];
+  const worstAgeByEfficiency = byAge.filter(a => a.name !== 'Unknown' && a.Results > 0).sort((a, b) => b.CostPerResult - a.CostPerResult)[0];
+  const sortedCampaigns = [...byCampaign].sort((a, b) => b.Results - a.Results);
+  const topCampaign = sortedCampaigns[0];
+  const secondCampaign = sortedCampaigns[1];
+  const bestCPRCampaign = [...byCampaign].filter(c => c.Results > 0).sort((a, b) => a.CostPerResult - b.CostPerResult)[0];
+
+  // ── VERDICT (CPR benchmarks for lead gen in ZAR) ──────────────────────────
   let verdict: ReportAnalysis['verdict'];
   let verdictLabel: string;
   let verdictColor: string;
@@ -101,106 +159,263 @@ function generateAnalysis(
     verdict = 'poor'; verdictLabel = 'Needs Attention'; verdictColor = 'text-red-400';
   }
 
-  const topAgeByResults = byAge.filter(a => a.name !== 'Unknown').sort((a, b) => b.Results - a.Results)[0];
-  const topAgeByEfficiency = byAge.filter(a => a.name !== 'Unknown' && a.Results > 0).sort((a, b) => a.CostPerResult - b.CostPerResult)[0];
-  const topCampaign = byCampaign.sort((a, b) => b.Results - a.Results)[0];
-  const secondCampaign = byCampaign[1];
+  // ── RATING (out of 10) ────────────────────────────────────────────────────
+  let rating = 5;
+  if (overallCPR < 40) rating += 2.5;
+  else if (overallCPR < 60) rating += 1.5;
+  else if (overallCPR < 80) rating += 0.5;
+  else if (overallCPR > 120) rating -= 2;
+  if (avgFrequency < 2.5) rating += 0.5;
+  else if (avgFrequency > 3.5) rating -= 1;
+  if (totalResults > 100) rating += 1;
+  if (reachToResultRate > 0.15) rating += 0.5;
+  rating = Math.min(10, Math.max(1, Math.round(rating * 10) / 10));
 
+  // ── PROFITABILITY VERDICT ─────────────────────────────────────────────────
+  const profitabilityVerdict: ReportAnalysis['profitabilityVerdict'] =
+    overallCPR < 70 ? 'profitable' : overallCPR < 120 ? 'break-even' : 'underperforming';
+
+  // ── TOP 3 POSITIVES ───────────────────────────────────────────────────────
+  const top3Positives: string[] = [];
+  if (overallCPR < 80) top3Positives.push(`Strong cost efficiency — generating leads at R${overallCPR.toFixed(2)} each`);
+  if (totalResults > 50) top3Positives.push(`Solid lead volume — ${totalResults} leads generated in the reporting period`);
+  if (avgFrequency < 2.5) top3Positives.push(`Healthy ad frequency (${avgFrequency.toFixed(1)}) — no signs of audience fatigue`);
+  if (topAgeByEfficiency) top3Positives.push(`${topAgeByEfficiency.name} age group converting at just R${topAgeByEfficiency.CostPerResult.toFixed(2)} per lead`);
+  if (byCampaign.length > 1 && topCampaign) top3Positives.push(`"${topCampaign.name}" campaign is a strong performer with ${topCampaign.Results} leads`);
+  top3Positives.splice(3);
+  while (top3Positives.length < 3) top3Positives.push('Campaigns are actively delivering results and reaching new audiences.');
+
+  // ── TOP 3 ISSUES ──────────────────────────────────────────────────────────
+  const top3Issues: string[] = [];
+  if (overallCPR > 80) top3Issues.push(`Cost per lead (R${overallCPR.toFixed(2)}) is above the ideal target — efficiency can be improved`);
+  if (avgFrequency > 3) top3Issues.push(`High frequency (${avgFrequency.toFixed(1)}) — audiences are seeing the same ads too often`);
+  if (worstAgeByEfficiency && worstAgeByEfficiency.CostPerResult > overallCPR * 1.5) {
+    top3Issues.push(`${worstAgeByEfficiency.name} age group has a high cost per lead at R${worstAgeByEfficiency.CostPerResult.toFixed(2)}`);
+  }
+  if (byCampaign.length >= 2 && secondCampaign && topCampaign && (topCampaign.Results / Math.max(1, secondCampaign.Results)) > 2) {
+    top3Issues.push(`Budget imbalance — one campaign is significantly outperforming the other`);
+  }
+  top3Issues.push('No CPC/CTR data available — creative performance cannot be fully assessed from this export');
+  top3Issues.splice(3);
+
+  // ── AUTOMATED INSIGHTS ────────────────────────────────────────────────────
   const insights: AnalysisInsight[] = [];
 
-  // Performance verdict insight
   if (verdict === 'excellent' || verdict === 'good') {
-    insights.push({
-      type: 'positive',
-      title: 'Cost Per Result is Healthy',
+    insights.push({ type: 'positive', title: 'Cost Per Lead is Healthy',
       body: `Your average cost per lead is R${overallCPR.toFixed(2)}, which is ${verdict === 'excellent' ? 'well below' : 'below'} the typical benchmark for lead generation campaigns in this sector. The budget is being used efficiently.`
     });
   } else {
-    insights.push({
-      type: 'warning',
-      title: 'Cost Per Result Needs Monitoring',
-      body: `Your average cost per lead is R${overallCPR.toFixed(2)}. This is on the higher end — consider refining audience targeting or refreshing ad creative to bring this down.`
+    insights.push({ type: 'warning', title: 'Cost Per Lead Needs Improvement',
+      body: `Your average cost per lead is R${overallCPR.toFixed(2)}. This is above the ideal target — consider refreshing ad creative or tightening audience targeting to bring this down.`
     });
   }
 
-  // Frequency insight
   if (avgFrequency > 3) {
-    insights.push({
-      type: 'warning',
-      title: 'Audience Fatigue Risk',
-      body: `The average frequency is ${avgFrequency.toFixed(1)}, meaning people are seeing your ad more than 3 times on average. This can cause ad fatigue and rising costs. Consider broadening your audience or rotating creatives.`
+    insights.push({ type: 'warning', title: 'Audience Fatigue Risk',
+      body: `Frequency is ${avgFrequency.toFixed(1)} — people are seeing your ads more than 3 times on average. This causes banner blindness and rising costs. Broaden your audience or rotate creatives.`
     });
   } else {
-    insights.push({
-      type: 'positive',
-      title: 'Frequency is Well Controlled',
-      body: `With an average frequency of ${avgFrequency.toFixed(1)}, your audience is not being over-exposed to the ads. This is a healthy sign of fresh reach and engagement.`
+    insights.push({ type: 'positive', title: 'Frequency is Under Control',
+      body: `At ${avgFrequency.toFixed(1)}, your audience isn't being over-exposed to the ads. This is healthy and suggests your reach strategy is working well.`
     });
   }
 
-  // Campaign comparison
   if (byCampaign.length >= 2 && topCampaign && secondCampaign) {
-    const leader = topCampaign.Results > secondCampaign.Results ? topCampaign : secondCampaign;
+    const leader = topCampaign.Results >= secondCampaign.Results ? topCampaign : secondCampaign;
     const laggard = leader === topCampaign ? secondCampaign : topCampaign;
-    const diff = leader.Results - laggard.Results;
-    insights.push({
-      type: 'info',
-      title: 'Campaign Region Comparison',
-      body: `The "${leader.name}" campaign is outperforming "${laggard.name}" by ${diff} results. Both campaigns are active, but budget reallocation toward the stronger region may improve overall efficiency.`
+    insights.push({ type: 'info', title: 'Campaign Performance Gap',
+      body: `"${leader.name}" is delivering ${leader.Results} leads vs "${laggard.name}" with ${laggard.Results}. The leading campaign also has a lower cost per result (R${leader.CostPerResult.toFixed(2)} vs R${laggard.CostPerResult.toFixed(2)}). Budget reallocation toward the leader could improve overall ROI.`
     });
   }
 
-  // Age group efficiency
   if (topAgeByEfficiency) {
-    insights.push({
-      type: 'positive',
-      title: `Most Efficient Age Group: ${topAgeByEfficiency.name}`,
-      body: `The ${topAgeByEfficiency.name} age group delivers leads at R${topAgeByEfficiency.CostPerResult.toFixed(2)} each — the lowest cost per result of all age groups. This segment offers the best return on spend.`
+    insights.push({ type: 'positive', title: `Best-Value Audience: ${topAgeByEfficiency.name}`,
+      body: `The ${topAgeByEfficiency.name} age group delivers leads at R${topAgeByEfficiency.CostPerResult.toFixed(2)} each — your most efficient segment. Increasing budget here would likely generate more leads for less spend.`
     });
   }
 
-  // Reach vs Results
-  const reachToResultRate = totalReach > 0 ? (totalResults / totalReach) * 100 : 0;
-  insights.push({
-    type: reachToResultRate > 0.1 ? 'positive' : 'info',
-    title: 'Reach-to-Lead Conversion',
-    body: `Out of ${totalReach.toLocaleString()} unique people reached, ${totalResults} converted into leads — a ${reachToResultRate.toFixed(2)}% conversion from reach. ${reachToResultRate > 0.15 ? 'This is a strong conversion rate.' : 'There is room to improve targeting quality to convert more of your reach into results.'}`
+  insights.push({ type: reachToResultRate > 0.15 ? 'positive' : 'info', title: 'Reach-to-Lead Conversion',
+    body: `Of the ${totalReach.toLocaleString()} unique people reached, ${totalResults} converted into leads (${reachToResultRate.toFixed(2)}%). ${reachToResultRate > 0.15 ? 'This is a solid conversion rate from reach.' : 'Improving ad relevance or refining targeting could convert more of your reached audience into actual leads.'}`
   });
 
-  // Build audience summary
+  // ── CORE METRICS ASSESSMENT ───────────────────────────────────────────────
+  const metricsAssessment: MetricAssessment[] = [];
+
+  metricsAssessment.push({
+    name: 'Cost Per Result (CPR)',
+    value: `R${overallCPR.toFixed(2)}`,
+    rating: overallCPR < 60 ? 'good' : overallCPR < 100 ? 'average' : 'poor',
+    explanation: overallCPR < 60
+      ? 'Excellent — you are generating leads at a very competitive rate. Keep the current strategy running.'
+      : overallCPR < 100
+      ? 'Reasonable, but there is room to improve. Small creative or targeting tweaks could push this down further.'
+      : 'Above target — this level of cost per lead makes profitability harder. Prioritise reducing this before scaling.'
+  });
+
+  metricsAssessment.push({
+    name: 'CPM (Cost per 1,000 Impressions)',
+    value: `R${cpm.toFixed(2)}`,
+    rating: cpm < 50 ? 'good' : cpm < 120 ? 'average' : 'poor',
+    explanation: cpm < 50
+      ? 'Low CPM — your ads are reaching people at a great price. The targeting and auction dynamics are in your favour.'
+      : cpm < 120
+      ? 'Moderate CPM — within acceptable range. Monitor whether rising CPM is affecting your overall cost per result.'
+      : 'High CPM — you are paying a lot to get seen. This often signals a narrow or competitive audience. Consider broadening your targeting.'
+  });
+
+  metricsAssessment.push({
+    name: 'Frequency',
+    value: avgFrequency.toFixed(2),
+    rating: avgFrequency < 2 ? 'good' : avgFrequency < 3 ? 'average' : 'poor',
+    explanation: avgFrequency < 2
+      ? 'Great — your audience is seeing the ad at a healthy rate without oversaturation.'
+      : avgFrequency < 3
+      ? 'Acceptable — getting close to where ad fatigue can start. Worth monitoring.'
+      : 'High frequency — your audience has seen this ad too many times. Expect rising costs and declining results if not addressed.'
+  });
+
+  metricsAssessment.push({
+    name: 'Impression-to-Lead Rate',
+    value: `${impressionToResultRate.toFixed(3)}%`,
+    rating: impressionToResultRate > 0.1 ? 'good' : impressionToResultRate > 0.05 ? 'average' : 'poor',
+    explanation: impressionToResultRate > 0.1
+      ? 'Strong — a good proportion of people who see your ad are converting. The offer and creative are resonating well.'
+      : impressionToResultRate > 0.05
+      ? 'Moderate — your ads are generating some conversions but there is room to improve the quality of your creative or offer.'
+      : 'Low — most people who see the ad are not converting. This could indicate a mismatch between the ad and what users find on the landing page.'
+  });
+
+  // ── FUNNEL ANALYSIS ───────────────────────────────────────────────────────
+  const funnelStages: FunnelStage[] = [
+    {
+      label: 'Impressions Delivered',
+      count: totalImpressions,
+      note: 'Total number of times your ads were shown to users on Facebook and Instagram.'
+    },
+    {
+      label: 'Unique People Reached',
+      count: totalReach,
+      pctFromPrev: totalImpressions > 0 ? (totalReach / totalImpressions) * 100 : 0,
+      note: `Each person saw the ad an average of ${avgFrequency.toFixed(1)} times. ${avgFrequency > 3 ? 'This high repeat exposure suggests the audience pool is too small.' : 'Frequency is healthy.'}`
+    },
+    {
+      label: 'Leads Converted',
+      count: totalResults,
+      pctFromPrev: totalReach > 0 ? (totalResults / totalReach) * 100 : 0,
+      note: `${reachToResultRate.toFixed(2)}% of reached people converted. ${reachToResultRate < 0.1 ? 'This drop-off suggests the ad creative, offer, or landing page may need improvement.' : 'This is a solid conversion rate from reach to lead.'}`
+    }
+  ];
+
+  // ── ALERTS & RED FLAGS ────────────────────────────────────────────────────
+  const alerts: Alert[] = [];
+
+  if (avgFrequency > 3.5) {
+    alerts.push({ severity: 'high', title: 'Ad Fatigue Detected',
+      text: `Frequency has reached ${avgFrequency.toFixed(1)}. Your audience is being over-exposed to the same ads. Expect costs to rise and results to decline if not addressed immediately.`
+    });
+  } else if (avgFrequency > 2.5) {
+    alerts.push({ severity: 'medium', title: 'Frequency Approaching Danger Zone',
+      text: `Frequency is at ${avgFrequency.toFixed(1)} — approaching the threshold where ad fatigue becomes a problem. Start planning creative refreshes or audience expansion.`
+    });
+  }
+
+  if (overallCPR > 100) {
+    alerts.push({ severity: 'high', title: 'High Cost Per Lead',
+      text: `At R${overallCPR.toFixed(2)} per lead, profitability is at risk. This needs to be addressed before increasing ad spend.`
+    });
+  } else if (overallCPR > 70) {
+    alerts.push({ severity: 'medium', title: 'Cost Per Lead Above Target',
+      text: `R${overallCPR.toFixed(2)} per lead is manageable but not ideal. Small optimisations in targeting or creative could bring this down meaningfully.`
+    });
+  }
+
+  if (worstAgeByEfficiency && worstAgeByEfficiency.CostPerResult > overallCPR * 1.8 && worstAgeByEfficiency.Spend > totalSpend * 0.1) {
+    alerts.push({ severity: 'medium', title: `Underperforming Age Segment: ${worstAgeByEfficiency.name}`,
+      text: `The ${worstAgeByEfficiency.name} group is costing R${worstAgeByEfficiency.CostPerResult.toFixed(2)} per lead — significantly above your average. Consider reducing spend on this segment.`
+    });
+  }
+
+  if (byCampaign.length >= 2 && secondCampaign && secondCampaign.Results === 0) {
+    alerts.push({ severity: 'high', title: 'Campaign Generating No Results',
+      text: `"${secondCampaign.name}" has spent budget but generated zero results. This campaign should be paused and investigated immediately.`
+    });
+  }
+
+  if (alerts.length === 0) {
+    alerts.push({ severity: 'low', title: 'No Critical Issues Detected',
+      text: 'Your campaigns are running without any major red flags. Continue monitoring performance regularly to catch any changes early.'
+    });
+  }
+
+  // ── AUDIENCE SUMMARY ──────────────────────────────────────────────────────
   const topAgesFormatted = byAge
     .filter(a => a.name !== 'Unknown' && a.Results > 0)
     .slice(0, 3)
     .map(a => `${a.name} (${a.Results} leads)`).join(', ');
 
-  const audienceSummary = `Your ads are reaching people across multiple age groups, but the strongest engagement is coming from the ${topAgeByResults?.name ?? 'N/A'} bracket, which generated the most leads overall. The top three age groups by lead volume are: ${topAgesFormatted}. ${topAgeByEfficiency ? `However, the most cost-efficient conversions are happening with the ${topAgeByEfficiency.name} group at just R${topAgeByEfficiency.CostPerResult.toFixed(2)} per lead.` : ''} This tells us your core audience is likely ${topAgeByResults?.name ?? ''} adults who are in a phase of life where health and sleep quality become a priority — a strong fit for a mattress health product.`;
+  const audienceSummary = `Your ads are reaching people across multiple age groups. The strongest response is coming from the ${topAgeByResults?.name ?? 'N/A'} bracket, which is generating the most leads overall. Top three age groups by lead volume: ${topAgesFormatted}. ${topAgeByEfficiency ? `The most cost-efficient conversions are happening with the ${topAgeByEfficiency.name} group at R${topAgeByEfficiency.CostPerResult.toFixed(2)} per lead — your best-value audience.` : ''} This demographic profile suggests your core customer is likely a ${topAgeByResults?.name ?? ''} adult who is increasingly focused on health, sleep quality, and long-term wellbeing — a strong fit for a premium mattress product.`;
 
-  // Recommendations
+  // ── SCALING OPPORTUNITIES ─────────────────────────────────────────────────
+  const scalingOpportunities: string[] = [];
+  if (bestCPRCampaign) {
+    scalingOpportunities.push(`Scale up "${bestCPRCampaign.name}" — it has the best cost per result (R${bestCPRCampaign.CostPerResult.toFixed(2)}) and should receive a higher share of budget.`);
+  }
+  if (topAgeByEfficiency) {
+    scalingOpportunities.push(`Increase budget allocation for the ${topAgeByEfficiency.name} age group — your most efficient audience segment at R${topAgeByEfficiency.CostPerResult.toFixed(2)} per lead.`);
+  }
+  scalingOpportunities.push('Duplicate your best-performing ad set into a new campaign with a Lookalike Audience built from past converters — this often delivers similar or better results at scale.');
+  scalingOpportunities.push('If ROAS data is available on specific campaigns, prioritise scaling those campaigns first before touching others.');
+  if (worstAgeByEfficiency && worstAgeByEfficiency.CostPerResult > overallCPR * 1.5) {
+    scalingOpportunities.push(`Reduce or pause spend on the ${worstAgeByEfficiency.name} age group — reallocate that budget to your top-performing segments instead.`);
+  }
+
+  // ── TESTING SUGGESTIONS ───────────────────────────────────────────────────
+  const testingSuggestions: string[] = [
+    'Test a video creative vs. your current static image — video ads typically achieve lower CPM and higher engagement on Meta.',
+    'Run a carousel ad showcasing multiple product benefits or testimonials — these often perform well for health-related products.',
+    `Create a dedicated ad set targeting only the ${topAgeByEfficiency?.name ?? '35-44'} age group with messaging tailored to their life stage and health priorities.`,
+    'Test two different headline variations using the same visual — this isolates whether the copy or the image is driving results.',
+    'A/B test your landing page with a shorter form (e.g. just name + phone number) to reduce friction and improve the lead conversion rate.',
+    'Experiment with a retargeting campaign targeting users who visited your website but did not submit a lead — these warm audiences typically convert at 2-3x the rate of cold audiences.',
+    'Test an interest-based audience alongside your current broad targeting to see which delivers better quality leads.'
+  ];
+
+  // ── RECOMMENDATIONS ───────────────────────────────────────────────────────
   const recommendations: string[] = [];
-  if (overallCPR > 60) recommendations.push('Review ad creative and copy — fresher visuals or a stronger call-to-action could reduce your cost per lead.');
-  if (avgFrequency > 2.5) recommendations.push('Expand your target audience or introduce Lookalike audiences to avoid reaching the same people repeatedly.');
+  if (overallCPR > 60) recommendations.push('Refresh your ad creative — new visuals or a stronger, benefit-focused headline can meaningfully reduce your cost per lead.');
+  if (avgFrequency > 2.5) recommendations.push('Broaden your audience or add Lookalike Audiences to prevent the same people from seeing your ads repeatedly.');
   if (topAgeByEfficiency && topAgeByEfficiency.name !== topAgeByResults?.name) {
-    recommendations.push(`Consider shifting more budget toward the ${topAgeByEfficiency.name} age group — they convert at the lowest cost per lead.`);
+    recommendations.push(`Shift more budget toward the ${topAgeByEfficiency.name} age group — they convert at the lowest cost per lead and represent your best ROI opportunity.`);
   }
-  if (byCampaign.length >= 2) {
-    const sorted = [...byCampaign].sort((a, b) => a.CostPerResult - b.CostPerResult);
-    recommendations.push(`The "${sorted[0].name}" campaign has a better cost per result. Consider reallocating budget from the weaker campaign to maximise ROI.`);
+  if (byCampaign.length >= 2 && bestCPRCampaign) {
+    recommendations.push(`Reallocate budget toward "${bestCPRCampaign.name}" — it has a lower cost per result than the other campaign(s) and should be prioritised.`);
   }
-  recommendations.push('A/B test different ad formats (carousel vs single image) to see which resonates more with your top-performing age groups.');
-  recommendations.push('Set up a retargeting campaign for website visitors who did not convert — this often yields much lower CPR than cold audience campaigns.');
+  recommendations.push('Review your landing page experience — ensure it loads fast, matches the promise in your ad, and has a simple, clear form above the fold.');
+  recommendations.push('Set up a Meta Pixel retargeting audience for website visitors — this lets you follow up with people who showed interest but did not convert.');
 
-  const performanceSummary = `During the period ${dateRange}, your Meta Ads campaigns generated ${totalResults} leads at a total spend of R${totalSpend.toFixed(2)}, averaging R${overallCPR.toFixed(2)} per lead. The campaigns reached ${totalReach.toLocaleString()} unique people and delivered ${totalImpressions.toLocaleString()} impressions. Overall, the campaign is performing ${verdictLabel.toLowerCase()} — ${verdict === 'excellent' || verdict === 'good' ? 'costs are well-controlled and the ads are generating real leads at a sustainable rate' : 'there are opportunities to improve efficiency and reduce the cost per lead with some strategic adjustments'}.`;
+  // ── PERFORMANCE SUMMARY ───────────────────────────────────────────────────
+  const performanceSummary = `During ${dateRange}, your Meta Ads campaigns generated ${totalResults} leads at a total spend of R${totalSpend.toFixed(2)}, averaging R${overallCPR.toFixed(2)} per lead. The campaigns reached ${totalReach.toLocaleString()} unique people with ${totalImpressions.toLocaleString()} impressions. Overall, the campaign is performing ${verdictLabel.toLowerCase()} — ${verdict === 'excellent' || verdict === 'good' ? 'lead costs are well-controlled and the ads are delivering results at a sustainable rate' : 'there are opportunities to improve efficiency and reduce the cost per lead with targeted adjustments'}.`;
 
   return {
+    rating,
+    profitabilityVerdict,
+    top3Positives,
+    top3Issues,
     verdict,
     verdictLabel,
     verdictColor,
     performanceSummary,
     insights,
+    metricsAssessment,
+    funnelStages,
     audienceSummary,
     primaryAgeGroup: topAgeByResults?.name ?? 'N/A',
     mostEfficientAgeGroup: topAgeByEfficiency?.name ?? 'N/A',
     topCampaign: topCampaign?.name ?? 'N/A',
+    alerts,
+    scalingOpportunities,
+    testingSuggestions,
     recommendations
   };
 }
