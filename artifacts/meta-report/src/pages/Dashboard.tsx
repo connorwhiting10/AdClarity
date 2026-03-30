@@ -1,5 +1,8 @@
 import React, { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import soLogoWhite from "@assets/SO_Logo_White_1774852377878.png";
+import soBrandIcon from "@assets/SO_Brand_Icon_White_1774852377878.png";
+import soBgWatermark from "@assets/Backgrounds.2_1774852377878.png";
 import { 
   UploadCloud, 
   FileSpreadsheet, 
@@ -217,29 +220,40 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-background/90 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          {/* Step One branding */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_-3px_rgba(24,119,242,0.5)]">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
-            <h1 className="font-display font-bold text-xl tracking-tight hidden sm:block">
-              MetaAds Simplifier
-            </h1>
+            <img
+              src={soBrandIcon}
+              alt="Step One icon"
+              className="w-8 h-8 object-contain opacity-90"
+            />
+            <img
+              src={soLogoWhite}
+              alt="Step One"
+              className="h-6 object-contain opacity-90 hidden sm:block"
+            />
           </div>
-          
-          <div className="flex items-center gap-4">
+
+          {/* Right: report badge + actions */}
+          <div className="flex items-center gap-3">
+            {!reportData && (
+              <span className="text-xs text-muted-foreground hidden md:block tracking-widest uppercase">
+                Meta Ads Report Simplifier
+              </span>
+            )}
             {reportData && (
               <>
-                <Badge variant="outline" className="hidden md:inline-flex bg-background/50 border-border">
-                  Period: {reportData.dateRange}
+                <Badge variant="outline" className="hidden md:inline-flex bg-background/50 border-white/10 text-muted-foreground text-xs">
+                  {reportData.dateRange}
                 </Badge>
-                <Button variant="outline" size="sm" onClick={resetState} className="hidden sm:flex">
+                <Button variant="outline" size="sm" onClick={resetState} className="hidden sm:flex border-white/10 hover:bg-white/5">
                   <RefreshCw className="w-4 h-4 mr-2" />
                   New Report
                 </Button>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   onClick={() => exportToCSV(reportData.simplifiedData)}
                   className="shadow-lg shadow-primary/20"
                 >
@@ -260,43 +274,58 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="flex flex-col items-center justify-center pt-12 pb-24"
+              className="flex flex-col items-center justify-center pt-12 pb-24 relative"
             >
-              <div className="text-center max-w-2xl mb-12">
+              {/* Background watermark — brand pattern, pinned bottom-left */}
+              <div className="pointer-events-none fixed bottom-0 left-0 w-[540px] max-w-[60vw] opacity-[0.04] select-none">
+                <img src={soBgWatermark} alt="" className="w-full h-auto" />
+              </div>
+
+              {/* Hero text */}
+              <div className="text-center max-w-2xl mb-12 relative z-10">
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <img src={soBrandIcon} alt="Step One" className="w-10 h-10 opacity-80" />
+                </div>
                 <h2 className="text-4xl md:text-5xl font-display font-bold mb-4 bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
-                  Transform complex reports into clear insights.
+                  Transform complex reports<br className="hidden md:block" /> into clear insights.
                 </h2>
                 <p className="text-lg text-muted-foreground">
-                  Upload your raw Meta Ads Excel export and instantly get a simplified dashboard, actionable metrics, and a clean CSV you can actually read.
+                  Upload your raw Meta Ads Excel export and instantly get a simplified dashboard, actionable metrics, and a written performance analysis.
                 </p>
               </div>
 
+              {/* Upload card */}
               <Card 
-                className={`w-full max-w-xl transition-all duration-300 border-2 ${
-                  isDragging ? 'border-primary shadow-[0_0_40px_-10px_rgba(24,119,242,0.3)]' : 'border-border/50 border-dashed hover:border-primary/50'
+                className={`w-full max-w-xl transition-all duration-300 border-2 relative z-10 ${
+                  isDragging ? 'border-primary shadow-[0_0_40px_-10px_rgba(24,119,242,0.3)]' : 'border-white/10 border-dashed hover:border-primary/50'
                 }`}
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}
                 onDrop={onDrop}
               >
                 <CardContent className="flex flex-col items-center justify-center py-20 px-8 text-center relative overflow-hidden">
-                  {/* Decorative background blur */}
+                  {/* Subtle glow */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
                   
                   {isProcessing ? (
-                    <div className="flex flex-col items-center animate-pulse">
-                      <RefreshCw className="w-16 h-16 text-primary mb-6 animate-spin" />
+                    <div className="flex flex-col items-center">
+                      <div className="relative mb-6">
+                        <img src={soBrandIcon} alt="" className="w-16 h-16 animate-pulse opacity-70" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <RefreshCw className="w-6 h-6 text-primary animate-spin" />
+                        </div>
+                      </div>
                       <h3 className="text-xl font-bold mb-2">Parsing Report...</h3>
-                      <p className="text-muted-foreground text-sm">Crunching the numbers and organizing data.</p>
+                      <p className="text-muted-foreground text-sm">Crunching the numbers and generating your analysis.</p>
                     </div>
                   ) : (
                     <>
-                      <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mb-6 ring-1 ring-white/10">
+                      <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-6 ring-1 transition-all ${isDragging ? 'bg-primary/20 ring-primary/40' : 'bg-muted/50 ring-white/10'}`}>
                         <UploadCloud className={`w-10 h-10 transition-colors ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
                       </div>
-                      <h3 className="text-2xl font-bold mb-2">Upload Report</h3>
+                      <h3 className="text-2xl font-bold mb-2">Upload Your Report</h3>
                       <p className="text-muted-foreground mb-8 max-w-sm">
-                        Drag and drop your Meta Ads .xlsx file here, or click to browse your files.
+                        Drag and drop your Meta Ads <span className="text-foreground/70 font-medium">.xlsx</span> file here, or click to browse.
                       </p>
                       
                       <input 
@@ -322,13 +351,10 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              {/* Decorative AI Background Image Element */}
-              <div className="mt-16 w-full max-w-4xl opacity-40 mix-blend-screen pointer-events-none">
-                <img 
-                  src={`${import.meta.env.BASE_URL}images/hero-abstract.png`} 
-                  alt="Abstract background" 
-                  className="w-full h-auto object-cover rounded-3xl"
-                />
+              {/* Powered by Step One footer note */}
+              <div className="mt-8 flex items-center gap-2 opacity-40 relative z-10">
+                <img src={soBrandIcon} alt="Step One" className="w-4 h-4" />
+                <span className="text-xs tracking-widest uppercase text-muted-foreground">Step One</span>
               </div>
 
             </motion.div>
