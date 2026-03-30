@@ -224,7 +224,7 @@ export default function Dashboard() {
               <Activity className="w-5 h-5 text-white" />
             </div>
             <h1 className="font-display font-bold text-xl tracking-tight hidden sm:block">
-              MetaAds Simplifier
+              AdClarity
             </h1>
           </div>
           
