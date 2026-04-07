@@ -50,6 +50,8 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAdmin } from "@/context/AdminContext";
+import { useAuth } from "@/context/AuthContext";
+import { AuthModal } from "@/components/AuthModal";
 
 function InsightCard({ insight, index }: { insight: AnalysisInsight; index: number }) {
   const config = {
@@ -268,13 +270,13 @@ function UpgradeModal({ onClose, onViewPricing }: { onClose: () => void; onViewP
         <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-5">
           <Lock className="w-7 h-7 text-primary" />
         </div>
-        <h3 className="text-2xl font-display font-bold mb-2">Free Limit Reached</h3>
+        <h3 className="text-2xl font-display font-bold mb-2">You've reached your free limit</h3>
         <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
-          You've used your <strong className="text-foreground">1 free report</strong> for this month. Upgrade to run unlimited reports and unlock the full analysis every time.
+          Upgrade to continue. Unlock unlimited reports and get the full analysis every time.
         </p>
 
         <div className="rounded-xl border border-white/5 bg-muted/10 p-4 mb-6 text-left">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">What you get with Basic</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">What you unlock with Basic</p>
           {[
             "Unlimited reports per month",
             "Full written performance analysis",
@@ -291,7 +293,7 @@ function UpgradeModal({ onClose, onViewPricing }: { onClose: () => void; onViewP
         <div className="flex flex-col gap-3">
           <Button className="w-full shadow-lg shadow-primary/30" onClick={onViewPricing}>
             <Zap className="w-4 h-4 mr-2" />
-            See Pricing Plans
+            View Plans
           </Button>
           <Button variant="outline" className="w-full border-white/10 text-muted-foreground hover:text-foreground" onClick={onClose}>
             Maybe later
@@ -309,11 +311,15 @@ export default function Dashboard() {
   const [reportData, setReportData] = useState<ParsedReport | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [reportsUsed, setReportsUsed] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const { isAdmin, isPro, session, logout } = useAdmin();
+  const { isAdmin, isPro, session: adminSession, logout: adminLogout } = useAdmin();
+  const { user, isLoggedIn, reportLimit, logout: authLogout } = useAuth();
+
+  const effectiveLimit = isPro ? Infinity : reportLimit;
 
   useEffect(() => {
     setReportsUsed(getReportCount());
@@ -332,8 +338,13 @@ export default function Dashboard() {
     // Admin/Pro users bypass the freemium gate entirely
     if (!isPro) {
       const count = getReportCount();
-      if (count >= FREE_REPORT_LIMIT) {
-        setShowUpgradeModal(true);
+      if (count >= effectiveLimit) {
+        // If they haven't signed up yet, nudge them to sign up (3 free reports)
+        if (!isLoggedIn) {
+          setShowAuthModal(true);
+        } else {
+          setShowUpgradeModal(true);
+        }
         return;
       }
     }
@@ -407,26 +418,50 @@ export default function Dashboard() {
             {/* Free usage indicator — hidden for admin/pro */}
             {!isAdmin && !reportData && (
               <span className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/30 border border-white/5 rounded-full px-3 py-1">
-                <span className={`w-1.5 h-1.5 rounded-full ${reportsUsed < FREE_REPORT_LIMIT ? 'bg-emerald-400' : 'bg-red-400'}`} />
-                {reportsUsed < FREE_REPORT_LIMIT ? `${FREE_REPORT_LIMIT - reportsUsed} free report left` : 'Free limit reached'}
+                <span className={`w-1.5 h-1.5 rounded-full ${reportsUsed < effectiveLimit ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                {reportsUsed < effectiveLimit
+                  ? `${effectiveLimit - reportsUsed} free report${effectiveLimit - reportsUsed !== 1 ? "s" : ""} left`
+                  : "Free limit reached"}
               </span>
             )}
 
-            {/* Upgrade button — hidden for admin */}
+            {/* View Plans button — hidden for admin */}
             {!isAdmin && (
               <button
                 onClick={() => navigate("/pricing")}
                 className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors bg-primary/10 hover:bg-primary/15 border border-primary/20 rounded-full px-3 py-1.5"
               >
                 <Zap className="w-3.5 h-3.5" />
-                Upgrade
+                View Plans
               </button>
+            )}
+
+            {/* Auth: sign in or user pill */}
+            {!isAdmin && (
+              isLoggedIn ? (
+                <div className="hidden sm:flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground truncate max-w-[120px]">{user?.email}</span>
+                  <button
+                    onClick={authLogout}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors border border-white/5 rounded-full px-2.5 py-1"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-foreground/70 hover:text-foreground transition-colors border border-white/8 rounded-full px-3 py-1.5"
+                >
+                  Sign in
+                </button>
+              )
             )}
 
             {/* Admin login/logout */}
             {isAdmin ? (
               <button
-                onClick={() => logout()}
+                onClick={() => adminLogout()}
                 className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors border border-white/5 rounded-full px-3 py-1.5"
               >
                 Sign out
@@ -434,7 +469,7 @@ export default function Dashboard() {
             ) : (
               <button
                 onClick={() => setShowAdminModal(true)}
-                className="text-xs text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors px-2 py-1"
+                className="text-xs text-muted-foreground/20 hover:text-muted-foreground/50 transition-colors px-1 py-1"
                 title="Admin login"
               >
                 ·
@@ -528,6 +563,12 @@ export default function Dashboard() {
                           Select Excel File
                         </span>
                       </Button>
+
+                      <p className="text-xs text-muted-foreground mt-4">
+                        {isLoggedIn
+                          ? "Logged in · 3 free reports per month"
+                          : "No credit card required · Get 3 free reports/month after sign-up"}
+                      </p>
                     </>
                   )}
                 </CardContent>
@@ -970,6 +1011,21 @@ export default function Dashboard() {
           <UpgradeModal
             onClose={() => setShowUpgradeModal(false)}
             onViewPricing={() => { setShowUpgradeModal(false); navigate("/pricing"); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Auth modal */}
+      <AnimatePresence>
+        {showAuthModal && (
+          <AuthModal
+            initialMode="signup"
+            reason="limit"
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={() => {
+              setReportsUsed(getReportCount());
+              toast({ title: "Account created! You now have 3 free reports per month." });
+            }}
           />
         )}
       </AnimatePresence>

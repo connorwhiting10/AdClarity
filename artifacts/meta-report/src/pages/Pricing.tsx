@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import {
   Check,
@@ -10,10 +10,14 @@ import {
   ChevronDown,
   ChevronUp,
   Activity,
-  ArrowLeft
+  ArrowLeft,
+  ArrowRight,
+  Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AuthModal } from "@/components/AuthModal";
+import { useAuth } from "@/context/AuthContext";
 
 const ZAR_BASIC = 279;
 const ZAR_PRO = 999;
@@ -26,13 +30,13 @@ const USD_PRO_ANNUAL = 490;
 
 const FEATURES = {
   free: [
-    { text: "1 free report (no sign-up required)", included: true },
+    { text: "1 free report (no sign-up)", included: true },
     { text: "3 reports/month after sign-up", included: true },
     { text: "Core summary cards", included: true },
     { text: "Campaign & age breakdown", included: true },
     { text: "CSV export", included: true },
     { text: "Full performance analysis", included: false },
-    { text: "Historical data", included: false },
+    { text: "Report history", included: false },
     { text: "PDF export", included: false },
     { text: "Multi-user access", included: false },
     { text: "Priority support", included: false },
@@ -43,7 +47,7 @@ const FEATURES = {
     { text: "Campaign & age breakdown", included: true },
     { text: "CSV export", included: true },
     { text: "Full performance analysis", included: true },
-    { text: "30-day history", included: true },
+    { text: "30-day report history", included: true },
     { text: "PDF export", included: false },
     { text: "Multi-user access", included: false },
     { text: "Priority support", included: false },
@@ -54,7 +58,7 @@ const FEATURES = {
     { text: "Campaign & age breakdown", included: true },
     { text: "CSV export", included: true },
     { text: "Full performance analysis", included: true },
-    { text: "Full history", included: true },
+    { text: "Full report history", included: true },
     { text: "PDF export", included: true },
     { text: "Multi-user access (3–10 users)", included: true },
     { text: "Priority support", included: true },
@@ -64,27 +68,27 @@ const FEATURES = {
 const FAQS = [
   {
     q: "Can I cancel anytime?",
-    a: "Yes, absolutely. You can cancel your subscription at any time from your account settings. You'll keep access until the end of your current billing period — no hidden fees, no questions asked.",
+    a: "Yes, absolutely. Cancel anytime from your account settings. You'll keep access until the end of your current billing period — no hidden fees, no questions asked.",
+  },
+  {
+    q: "What happens when I hit my free limit?",
+    a: "After your free reports run out, you'll be prompted to upgrade. Your existing reports are never deleted — upgrading instantly unlocks everything.",
   },
   {
     q: "Do you support agencies?",
     a: "Yes! The Pro plan is built for agencies and includes multi-user access for 3 to 10 team members, advanced insights, PDF exports, and priority support.",
   },
   {
-    q: "What happens when I hit my free limit?",
-    a: "After your free report (or 3 reports/month on the free plan), you'll be prompted to upgrade. Your existing reports are never deleted — upgrading instantly unlocks everything.",
+    q: "Can I upgrade later?",
+    a: "Of course. Start on the Free plan and upgrade whenever you're ready. Your reports stay safe and your history carries over.",
   },
   {
-    q: "Which payment methods are supported?",
-    a: "For South African users we support PayFast (credit card, EFT, Instant EFT, SnapScan). International users are billed via Stripe (all major credit cards).",
+    q: "Which payment methods do you support?",
+    a: "South African users can pay via PayFast (credit card, EFT, Instant EFT, SnapScan). International users are billed via Stripe (all major credit cards).",
   },
   {
     q: "Is there an annual plan?",
-    a: "Yes! Pay annually and get 2 months free — that's a full 17% saving. Toggle the billing switch above to see annual pricing.",
-  },
-  {
-    q: "Can I switch between plans?",
-    a: "Yes. Upgrades take effect immediately. Downgrades apply at the start of your next billing cycle.",
+    a: "Yes! Pay annually and get 2 months free — a 17% saving. Toggle the billing switch above to see annual pricing.",
   },
 ];
 
@@ -134,7 +138,9 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 export default function Pricing() {
   const [annual, setAnnual] = useState(false);
   const [currency, setCurrency] = useState<"ZAR" | "USD">("ZAR");
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [, navigate] = useLocation();
+  const { isLoggedIn } = useAuth();
 
   const fmt = (zar: number, usd: number) =>
     currency === "ZAR" ? `R${zar.toLocaleString()}` : `$${usd}`;
@@ -153,10 +159,18 @@ export default function Pricing() {
     ? fmt(Math.round(ZAR_PRO_ANNUAL / 12), Math.round(USD_PRO_ANNUAL / 12))
     : null;
 
+  const handleStartFree = () => {
+    if (isLoggedIn) {
+      navigate("/");
+    } else {
+      setShowAuthModal(true);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground pb-24 sm:pb-0">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <button onClick={() => navigate("/")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_-3px_rgba(24,119,242,0.5)]">
@@ -187,12 +201,28 @@ export default function Pricing() {
           <h1 className="text-4xl md:text-5xl font-display font-bold mb-5 bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent leading-tight">
             Simple, Powerful Ad Insights —<br className="hidden md:block" /> Without the Confusion
           </h1>
-          <p className="text-lg text-muted-foreground mb-8">
-            Start free. Upgrade when you're ready. Cancel anytime.
+          <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
+            Understand your ad performance in seconds and know exactly what to fix.
           </p>
 
-          {/* Controls row */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          {/* Hero CTAs */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
+            <Button size="lg" className="w-full sm:w-auto shadow-lg shadow-primary/30 px-8" onClick={handleStartFree}>
+              Start Free
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+            <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/10 px-8" onClick={() => {
+              document.getElementById("pricing-cards")?.scrollIntoView({ behavior: "smooth" });
+            }}>
+              View Plans
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            No credit card required · Get 3 free reports per month after sign-up
+          </p>
+
+          {/* Billing controls */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
             {/* Currency toggle */}
             <div className="flex items-center gap-1 bg-muted/30 rounded-full p-1 border border-white/5">
               <button
@@ -227,7 +257,7 @@ export default function Pricing() {
         </motion.div>
 
         {/* Pricing cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
+        <div id="pricing-cards" className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
           {/* FREE */}
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
             <div className="h-full rounded-2xl border border-white/5 bg-card/40 p-7 flex flex-col">
@@ -236,11 +266,13 @@ export default function Pricing() {
                   <Zap className="w-5 h-5 text-muted-foreground" />
                 </div>
                 <h3 className="text-xl font-bold mb-1">Free</h3>
-                <p className="text-sm text-muted-foreground">Try before you commit</p>
+                <p className="text-sm text-muted-foreground">Try it out</p>
               </div>
               <div className="mb-6">
                 <div className="flex items-end gap-1">
-                  <span className="text-4xl font-display font-black text-foreground">R0</span>
+                  <span className="text-4xl font-display font-black text-foreground">
+                    {currency === "ZAR" ? "R0" : "$0"}
+                  </span>
                   <span className="text-muted-foreground mb-1">/month</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">No credit card required</p>
@@ -251,10 +283,11 @@ export default function Pricing() {
               <Button
                 variant="outline"
                 className="w-full border-white/10 hover:bg-white/5"
-                onClick={() => navigate("/")}
+                onClick={handleStartFree}
               >
                 Start Free
               </Button>
+              <p className="text-xs text-muted-foreground text-center mt-2">No credit card needed</p>
             </div>
           </motion.div>
 
@@ -271,7 +304,7 @@ export default function Pricing() {
                   <Activity className="w-5 h-5 text-primary" />
                 </div>
                 <h3 className="text-xl font-bold mb-1">Basic</h3>
-                <p className="text-sm text-muted-foreground">For solo marketers & small businesses</p>
+                <p className="text-sm text-muted-foreground">Perfect for individuals</p>
               </div>
               <div className="mb-6">
                 <div className="flex items-end gap-1">
@@ -304,7 +337,7 @@ export default function Pricing() {
                   <Building2 className="w-5 h-5 text-violet-400" />
                 </div>
                 <h3 className="text-xl font-bold mb-1">Pro</h3>
-                <p className="text-sm text-muted-foreground">For agencies & growing teams</p>
+                <p className="text-sm text-muted-foreground">Built for teams & agencies</p>
               </div>
               <div className="mb-6">
                 <div className="flex items-end gap-1">
@@ -340,7 +373,7 @@ export default function Pricing() {
           transition={{ delay: 0.3 }}
           className="flex flex-wrap items-center justify-center gap-8 mb-20 text-sm text-muted-foreground"
         >
-          {["No credit card for Free plan", "Cancel anytime", "Secure payments via Stripe & PayFast", "South African & international billing"].map((t) => (
+          {["No credit card for Free plan", "Cancel anytime", "Secure payments via Stripe & PayFast", "ZAR & USD billing"].map((t) => (
             <span key={t} className="flex items-center gap-2">
               <Check className="w-4 h-4 text-emerald-400 shrink-0" />
               {t}
@@ -372,7 +405,7 @@ export default function Pricing() {
                   ["PDF export", "—", "—", "✓"],
                   ["Multi-user access", "—", "—", "Up to 10"],
                   ["Priority support", "—", "—", "✓"],
-                  ["Price (monthly)", "Free", currency === "ZAR" ? "R279/mo" : "$15/mo", currency === "ZAR" ? "R999/mo" : "$49/mo"],
+                  ["Price (monthly)", currency === "ZAR" ? "Free" : "Free", currency === "ZAR" ? "R279/mo" : "$15/mo", currency === "ZAR" ? "R999/mo" : "$49/mo"],
                 ].map(([feat, free, basic, pro], i) => (
                   <tr key={i} className={`border-b border-white/5 ${i % 2 === 0 ? "bg-transparent" : "bg-white/[0.015]"}`}>
                     <td className="px-6 py-3.5 text-foreground/80">{feat}</td>
@@ -401,22 +434,46 @@ export default function Pricing() {
           transition={{ delay: 0.35 }}
           className="text-center rounded-2xl border border-primary/20 bg-primary/5 px-8 py-14"
         >
-          <Users className="w-10 h-10 text-primary mx-auto mb-4" />
+          <div className="flex items-center justify-center gap-1 mb-4">
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} className="w-4 h-4 text-amber-400 fill-amber-400" />
+            ))}
+          </div>
           <h3 className="text-2xl font-display font-bold mb-3">Ready to make sense of your ad data?</h3>
           <p className="text-muted-foreground mb-8 max-w-md mx-auto">
             Upload your first report for free — no account, no credit card. Upgrade when you're ready to unlock the full picture.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button size="lg" className="w-full sm:w-auto shadow-lg shadow-primary/30" onClick={() => navigate("/")}>
-              Start Free — No Sign-up Needed
+            <Button size="lg" className="w-full sm:w-auto shadow-lg shadow-primary/30 px-8" onClick={handleStartFree}>
+              Start Free
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
-            <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/10">
-              See Basic Plan
+            <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/10 px-8" onClick={() => navigate("/")}>
+              Try Without Sign-up
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-5">No credit card required for free plan · Cancel anytime</p>
+          <p className="text-xs text-muted-foreground mt-5">No credit card required · Cancel anytime</p>
         </motion.div>
       </main>
+
+      {/* Mobile sticky CTA */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 p-4 bg-background/95 backdrop-blur-xl border-t border-white/5">
+        <Button size="lg" className="w-full shadow-lg shadow-primary/30" onClick={handleStartFree}>
+          <Zap className="w-4 h-4 mr-2" />
+          Start Free — No Credit Card
+        </Button>
+      </div>
+
+      {/* Auth modal */}
+      <AnimatePresence>
+        {showAuthModal && (
+          <AuthModal
+            initialMode="signup"
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={() => navigate("/")}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

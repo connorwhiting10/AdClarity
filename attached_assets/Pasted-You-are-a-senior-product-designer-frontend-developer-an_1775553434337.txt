@@ -1,0 +1,245 @@
+You are a senior product designer, frontend developer, and SaaS conversion expert.
+
+Your task is to design and implement:
+
+1. A high-converting pricing page
+2. A fast, frictionless login and signup experience
+3. Clear upgrade flows from free → paid plans
+
+This is for a SaaS platform that analyzes advertising reports.
+
+---
+
+# 🎯 OBJECTIVES
+
+- Replace a weak “Upgrade” button with a full pricing experience
+- Clearly show available plans and value differences
+- Increase user signups and paid conversions
+- Make login/signup extremely fast and easy
+
+---
+
+# ⚡ QUICK WINS (IMPLEMENT IMMEDIATELY)
+
+These changes MUST be applied across the platform:
+
+1. Replace all instances of:
+   “Upgrade”
+   WITH:
+   - “View Plans”
+   - “Unlock Unlimited Reports”
+   - “Upgrade to Pro”
+
+2. Add a primary CTA button across the site:
+   - “Start Free”
+
+3. Add supporting microcopy near CTAs:
+   - “No credit card required”
+   - “Get 3 free reports per month”
+
+4. When a user hits usage limits:
+   Show message:
+   “You’ve reached your free limit. Upgrade to continue.”
+
+   Include CTA:
+   👉 “View Plans”
+
+---
+
+# 💰 PRICING PAGE REQUIREMENTS
+
+## 🧱 STRUCTURE
+
+### 1. HERO SECTION
+- Headline:
+  “Simple, Powerful Ad Insights — Without the Confusion”
+- Subheadline:
+  “Understand your ad performance in seconds and know exactly what to fix.”
+
+- CTA Buttons:
+  - “Start Free”
+  - “View Plans”
+
+---
+
+### 2. PRICING CARDS (3 TIERS)
+
+Display 3 cards side-by-side (desktop) and stacked (mobile):
+
+## 🟢 Free Plan
+- Price: Free
+- Features:
+  - 1 free report (no login)
+  - 3–5 reports per month after signup
+  - Basic insights
+
+- CTA:
+  “Start Free”
+
+---
+
+## 🔵 Basic Plan (MOST POPULAR)
+- Price:
+  - R279/month OR $15/month
+
+- Features:
+  - Unlimited reports
+  - Core insights
+  - 30-day history
+
+- Badge:
+  “Most Popular”
+
+- CTA:
+  “Get Started”
+
+---
+
+## 🟣 Pro Plan (Agencies)
+- Price:
+  - R999/month OR $49/month
+
+- Features:
+  - Multi-user access
+  - Advanced insights
+  - Export reports (PDF)
+  - Full history
+  - Priority support
+
+- CTA:
+  “Upgrade to Pro”
+
+---
+
+## 💡 UX FEATURES
+
+- Toggle between:
+  - Monthly / Annual pricing
+
+- Auto-detect currency:
+  - ZAR for South Africa
+  - USD for international users
+
+- Add trust signals:
+  - “Cancel anytime”
+  - “No credit card required for free plan”
+
+---
+
+# 🔥 CONVERSION ELEMENTS
+
+- Highlight Basic plan visually
+- Use benefit-driven text (not just features)
+- Add short descriptions:
+  - Free → “Try it out”
+  - Basic → “Perfect for individuals”
+  - Pro → “Built for teams & agencies”
+
+---
+
+# ❓ FAQ SECTION
+
+Include:
+- Can I cancel anytime?
+- What happens when I hit my free limit?
+- Do you support agencies?
+- Can I upgrade later?
+
+---
+
+# 🔐 LOGIN & SIGNUP EXPERIENCE
+
+## 🎯 GOAL
+Make it extremely fast and low friction.
+
+---
+
+## 🧱 AUTH UI
+
+Create a combined login/signup modal or page:
+
+### Options:
+- Email + password
+- Google login (recommended)
+
+---
+
+## ✨ UX FLOW
+
+### First-time user:
+- Generate 1 free report
+- Then prompt:
+  “Create a free account to continue”
+
+---
+
+### Signup:
+- Minimal fields:
+  - Email
+  - Password
+- Or Google one-click signup
+
+---
+
+### Login:
+- Simple:
+  - Email + password
+- Include:
+  - “Forgot password”
+
+---
+
+## 🚀 SPEED OPTIMISATION
+
+- Use modal instead of redirect (optional)
+- Keep form to 1–2 steps max
+- Auto-login after signup
+
+---
+
+# 🔄 UPGRADE FLOW
+
+When user hits limits:
+- Show paywall:
+  “You’ve reached your free limit. Upgrade to continue.”
+
+Include:
+👉 “View Plans”
+
+---
+
+# 📱 MOBILE EXPERIENCE
+
+- Stack pricing cards vertically
+- Sticky CTA button:
+  “Start Free” or “View Plans”
+
+---
+
+# 🎨 DESIGN STYLE
+
+- Clean, modern SaaS look
+- Use:
+  - Cards with shadows
+  - Rounded corners
+  - Clear spacing
+- Highlight selected plan visually
+
+---
+
+# 🧾 OUTPUT REQUIRED
+
+Provide:
+1. Pricing page layout (HTML/CSS or React)
+2. Login/signup UI (component or page)
+3. Upgrade modal design
+4. User flow (first visit → signup → upgrade)
+
+---
+
+# 🎯 GOAL
+
+Create a seamless experience where users:
+- Understand pricing instantly
+- Sign up with minimal friction
+- Upgrade naturally when they hit limits
