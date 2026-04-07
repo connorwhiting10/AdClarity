@@ -1,0 +1,266 @@
+You are a senior full-stack developer, SaaS architect, and conversion-focused product designer.
+
+Your task is to design and implement:
+1. A complete subscription payment system
+2. A freemium usage model
+3. A high-converting pricing page
+
+This platform is a SaaS tool that analyzes advertising reports and provides insights.
+
+---
+
+# 🎯 OBJECTIVES
+
+- Implement recurring subscription billing
+- Support both international and South African payments
+- Enforce a freemium usage model
+- Design a pricing page that converts users into paying customers
+
+---
+
+# 💳 PAYMENT SYSTEM ARCHITECTURE
+
+## Payment Providers:
+1. Stripe → International users + subscriptions
+2. PayFast → South African users
+
+---
+
+## 🌍 USER LOCATION LOGIC
+
+- Detect user location via IP or user selection
+- If South Africa:
+  - Show PayFast as primary option
+  - Allow Stripe as secondary option
+- If International:
+  - Use Stripe only
+
+---
+
+# 💰 PRICING STRUCTURE
+
+## 🟢 Free Plan
+- No login required for first report
+- After 1 report → force account creation
+- Logged-in free users:
+  - 3–5 reports per month
+- Limited insights
+- No historical data
+
+---
+
+## 🔵 Basic Plan (Solo Users)
+- Price:
+  - R279/month OR $15/month
+- Features:
+  - 1 user
+  - Unlimited reports
+  - Core insights
+  - Limited history (30 days)
+
+---
+
+## 🟣 Pro Plan (Agencies)
+- Price:
+  - R999/month OR $49/month
+- Features:
+  - Multi-user access (3–10 users)
+  - Unlimited reports
+  - Advanced insights + recommendations
+  - Report export (PDF)
+  - Full history
+  - Priority support
+
+---
+
+## 💡 FUTURE (optional but recommended)
+- Annual pricing (2 months free)
+- Example:
+  - R279/month OR R2,790/year
+
+---
+
+# 🆓 FREEMIUM USAGE LOGIC
+
+1. Non-logged-in users:
+   - Allow 1 free report
+   - Then require signup
+
+2. Logged-in free users:
+   - Track report usage in database
+   - Limit to X reports/month
+
+3. When limit reached:
+   - Block report generation
+   - Show upgrade paywall
+
+---
+
+# 👤 USER SYSTEM
+
+Create:
+- User accounts
+- Subscription states:
+  - Free
+  - Active (Basic / Pro)
+  - Past Due
+  - Cancelled
+
+Track:
+- Usage (reports generated)
+- Billing cycle
+- Plan type
+
+---
+
+# 💳 STRIPE IMPLEMENTATION
+
+Use Stripe for:
+- Subscription billing
+- Recurring payments
+- Plan upgrades/downgrades
+
+Implement:
+- Stripe Checkout
+- Webhooks:
+  - subscription_created
+  - invoice_paid
+  - payment_failed
+  - subscription_cancelled
+
+Ensure:
+- Automatic account updates based on webhook events
+
+---
+
+# 🇿🇦 PAYFAST IMPLEMENTATION
+
+Use PayFast for:
+- South African payments
+
+Implement:
+- PayFast API integration
+- Payment confirmation (ITN/webhook)
+
+Ensure:
+- Subscription status updates after payment
+
+If recurring billing is limited:
+- Implement monthly renewal reminders or fallback logic
+
+---
+
+# 🔄 BILLING LOGIC
+
+- Monthly auto-renew subscriptions
+- Handle:
+  - Failed payments (grace period)
+  - Upgrades (immediate)
+  - Downgrades (next billing cycle)
+
+---
+
+# 🔐 FEATURE ACCESS CONTROL
+
+Free:
+- Limited reports
+
+Basic:
+- Unlimited reports
+- Core insights
+
+Pro:
+- Advanced insights
+- Export features
+- Multi-user access
+
+---
+
+# ⚠️ EDGE CASES
+
+Handle:
+- Subscription cancellations
+- Payment failures
+- Mid-cycle upgrades
+- Region switching (SA ↔ International)
+
+---
+
+# 🖥️ PRICING PAGE DESIGN (VERY IMPORTANT)
+
+Design a high-converting pricing page with:
+
+## Layout:
+1. Header:
+   - Clear headline:
+     “Simple, Powerful Ad Insights — Without the Confusion”
+
+2. Pricing Cards (3 columns):
+   - Free
+   - Basic (highlighted as “Most Popular”)
+   - Pro
+
+3. Each card must include:
+   - Price (monthly + optional annual toggle)
+   - Feature list
+   - CTA button:
+     - Free → “Start Free”
+     - Basic → “Get Started”
+     - Pro → “Upgrade to Pro”
+
+---
+
+## 💡 UX REQUIREMENTS
+
+- Toggle between:
+  - Monthly / Annual pricing
+- Detect currency:
+  - Show R for SA users
+  - Show $ for international users
+
+- Show trust elements:
+  - “No credit card required” (Free plan)
+  - “Cancel anytime”
+
+---
+
+## 🔥 CONVERSION ELEMENTS
+
+Include:
+- “Most Popular” badge on Basic plan
+- Short benefit-driven copy (NOT just features)
+- FAQ section:
+  - “Can I cancel anytime?”
+  - “Do you support agencies?”
+  - “What happens when I hit my free limit?”
+
+---
+
+## 📱 MOBILE OPTIMISATION
+
+- Stack pricing cards vertically
+- Sticky CTA buttons
+
+---
+
+# 🧾 OUTPUT REQUIRED
+
+Provide:
+1. System architecture
+2. Database schema
+3. API endpoints
+4. Stripe integration steps
+5. PayFast integration steps
+6. Webhook handling logic
+7. Pricing page UI structure (HTML/CSS or React preferred)
+8. UX flow (user signup → free → upgrade)
+
+---
+
+# 🎯 GOAL
+
+Build a scalable SaaS system that:
+- Converts free users into paid users
+- Supports recurring billing and tiers
+- Works globally and in South Africa
+- Feels like a premium product
