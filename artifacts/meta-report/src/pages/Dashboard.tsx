@@ -49,6 +49,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useAdmin } from "@/context/AdminContext";
 
 function InsightCard({ insight, index }: { insight: AnalysisInsight; index: number }) {
   const config = {
@@ -182,6 +183,76 @@ function incrementReportCount() {
   localStorage.setItem(STORAGE_KEY, String(count + 1));
 }
 
+function AdminLoginModal({ onClose }: { onClose: () => void }) {
+  const { login } = useAdmin();
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      await login(email.trim(), code.trim());
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Access denied");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="relative z-10 w-full max-w-sm rounded-2xl border border-white/10 bg-card shadow-2xl p-8"
+      >
+        <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors">
+          <X className="w-5 h-5" />
+        </button>
+        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-5">
+          <Lock className="w-5 h-5 text-primary" />
+        </div>
+        <h3 className="text-xl font-bold mb-1">Admin Access</h3>
+        <p className="text-sm text-muted-foreground mb-6">For internal testing and development only.</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="admin@example.com"
+              className="w-full bg-muted/20 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 transition-colors"
+              required
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Access Code</label>
+            <input
+              type="password"
+              value={code}
+              onChange={e => setCode(e.target.value)}
+              placeholder="••••••••"
+              className="w-full bg-muted/20 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 transition-colors"
+              required
+            />
+          </div>
+          {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Verifying..." : "Sign In as Admin"}
+          </Button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
 function UpgradeModal({ onClose, onViewPricing }: { onClose: () => void; onViewPricing: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -237,10 +308,12 @@ export default function Dashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [reportData, setReportData] = useState<ParsedReport | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
   const [reportsUsed, setReportsUsed] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const { isAdmin, isPro, session, logout } = useAdmin();
 
   useEffect(() => {
     setReportsUsed(getReportCount());
@@ -256,17 +329,22 @@ export default function Dashboard() {
       return;
     }
 
-    const count = getReportCount();
-    if (count >= FREE_REPORT_LIMIT) {
-      setShowUpgradeModal(true);
-      return;
+    // Admin/Pro users bypass the freemium gate entirely
+    if (!isPro) {
+      const count = getReportCount();
+      if (count >= FREE_REPORT_LIMIT) {
+        setShowUpgradeModal(true);
+        return;
+      }
     }
 
     setIsProcessing(true);
     try {
       const parsed = await parseMetaReport(file);
-      incrementReportCount();
-      setReportsUsed(getReportCount());
+      if (!isPro) {
+        incrementReportCount();
+        setReportsUsed(getReportCount());
+      }
       setReportData(parsed);
       toast({
         title: "Report parsed successfully!",
@@ -318,20 +396,50 @@ export default function Dashboard() {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Free usage indicator */}
-            {!reportData && (
+            {/* Admin badge */}
+            {isAdmin && (
+              <span className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-full px-3 py-1">
+                <Lock className="w-3 h-3" />
+                Admin · Pro
+              </span>
+            )}
+
+            {/* Free usage indicator — hidden for admin/pro */}
+            {!isAdmin && !reportData && (
               <span className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/30 border border-white/5 rounded-full px-3 py-1">
                 <span className={`w-1.5 h-1.5 rounded-full ${reportsUsed < FREE_REPORT_LIMIT ? 'bg-emerald-400' : 'bg-red-400'}`} />
                 {reportsUsed < FREE_REPORT_LIMIT ? `${FREE_REPORT_LIMIT - reportsUsed} free report left` : 'Free limit reached'}
               </span>
             )}
-            <button
-              onClick={() => navigate("/pricing")}
-              className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors bg-primary/10 hover:bg-primary/15 border border-primary/20 rounded-full px-3 py-1.5"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              Upgrade
-            </button>
+
+            {/* Upgrade button — hidden for admin */}
+            {!isAdmin && (
+              <button
+                onClick={() => navigate("/pricing")}
+                className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors bg-primary/10 hover:bg-primary/15 border border-primary/20 rounded-full px-3 py-1.5"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Upgrade
+              </button>
+            )}
+
+            {/* Admin login/logout */}
+            {isAdmin ? (
+              <button
+                onClick={() => logout()}
+                className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors border border-white/5 rounded-full px-3 py-1.5"
+              >
+                Sign out
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAdminModal(true)}
+                className="text-xs text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors px-2 py-1"
+                title="Admin login"
+              >
+                ·
+              </button>
+            )}
             {reportData && (
               <>
                 <Badge variant="outline" className="hidden md:inline-flex bg-background/50 border-border text-xs">
@@ -855,6 +963,23 @@ export default function Dashboard() {
           )}
         </AnimatePresence>
       </main>
+
+      {/* Upgrade modal */}
+      <AnimatePresence>
+        {showUpgradeModal && (
+          <UpgradeModal
+            onClose={() => setShowUpgradeModal(false)}
+            onViewPricing={() => { setShowUpgradeModal(false); navigate("/pricing"); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Admin login modal */}
+      <AnimatePresence>
+        {showAdminModal && (
+          <AdminLoginModal onClose={() => setShowAdminModal(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
