@@ -1,5 +1,6 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLocation } from "wouter";
 import { 
   UploadCloud, 
   FileSpreadsheet, 
@@ -21,7 +22,10 @@ import {
   FlaskConical,
   Trophy,
   ChevronDown,
-  Gauge
+  Gauge,
+  Lock,
+  Zap,
+  X
 } from "lucide-react";
 import { 
   parseMetaReport, 
@@ -158,12 +162,89 @@ function FunnelViz({ stages }: { stages: FunnelStage[] }) {
   );
 }
 
+const FREE_REPORT_LIMIT = 1;
+const STORAGE_KEY = "adclarity_report_count";
+const CURRENT_MONTH_KEY = "adclarity_report_month";
+
+function getReportCount(): number {
+  const storedMonth = localStorage.getItem(CURRENT_MONTH_KEY);
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  if (storedMonth !== thisMonth) {
+    localStorage.setItem(CURRENT_MONTH_KEY, thisMonth);
+    localStorage.setItem(STORAGE_KEY, "0");
+    return 0;
+  }
+  return parseInt(localStorage.getItem(STORAGE_KEY) ?? "0", 10);
+}
+
+function incrementReportCount() {
+  const count = getReportCount();
+  localStorage.setItem(STORAGE_KEY, String(count + 1));
+}
+
+function UpgradeModal({ onClose, onViewPricing }: { onClose: () => void; onViewPricing: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="relative z-10 w-full max-w-md rounded-2xl border border-primary/30 bg-card shadow-2xl shadow-primary/10 p-8 text-center"
+      >
+        <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors">
+          <X className="w-5 h-5" />
+        </button>
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-5">
+          <Lock className="w-7 h-7 text-primary" />
+        </div>
+        <h3 className="text-2xl font-display font-bold mb-2">Free Limit Reached</h3>
+        <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
+          You've used your <strong className="text-foreground">1 free report</strong> for this month. Upgrade to run unlimited reports and unlock the full analysis every time.
+        </p>
+
+        <div className="rounded-xl border border-white/5 bg-muted/10 p-4 mb-6 text-left">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">What you get with Basic</p>
+          {[
+            "Unlimited reports per month",
+            "Full written performance analysis",
+            "Funnel, alerts & scaling sections",
+            "30-day report history",
+          ].map((f) => (
+            <div key={f} className="flex items-center gap-2 text-sm text-foreground/80 mb-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              {f}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <Button className="w-full shadow-lg shadow-primary/30" onClick={onViewPricing}>
+            <Zap className="w-4 h-4 mr-2" />
+            See Pricing Plans
+          </Button>
+          <Button variant="outline" className="w-full border-white/10 text-muted-foreground hover:text-foreground" onClick={onClose}>
+            Maybe later
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-4">From R279/month · Cancel anytime</p>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [reportData, setReportData] = useState<ParsedReport | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [reportsUsed, setReportsUsed] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    setReportsUsed(getReportCount());
+  }, []);
 
   const handleFile = async (file: File) => {
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.csv')) {
@@ -175,9 +256,17 @@ export default function Dashboard() {
       return;
     }
 
+    const count = getReportCount();
+    if (count >= FREE_REPORT_LIMIT) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const parsed = await parseMetaReport(file);
+      incrementReportCount();
+      setReportsUsed(getReportCount());
       setReportData(parsed);
       toast({
         title: "Report parsed successfully!",
@@ -228,11 +317,25 @@ export default function Dashboard() {
             </h1>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Free usage indicator */}
+            {!reportData && (
+              <span className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/30 border border-white/5 rounded-full px-3 py-1">
+                <span className={`w-1.5 h-1.5 rounded-full ${reportsUsed < FREE_REPORT_LIMIT ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                {reportsUsed < FREE_REPORT_LIMIT ? `${FREE_REPORT_LIMIT - reportsUsed} free report left` : 'Free limit reached'}
+              </span>
+            )}
+            <button
+              onClick={() => navigate("/pricing")}
+              className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors bg-primary/10 hover:bg-primary/15 border border-primary/20 rounded-full px-3 py-1.5"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              Upgrade
+            </button>
             {reportData && (
               <>
-                <Badge variant="outline" className="hidden md:inline-flex bg-background/50 border-border">
-                  Period: {reportData.dateRange}
+                <Badge variant="outline" className="hidden md:inline-flex bg-background/50 border-border text-xs">
+                  {reportData.dateRange}
                 </Badge>
                 <Button variant="outline" size="sm" onClick={resetState} className="hidden sm:flex">
                   <RefreshCw className="w-4 h-4 mr-2" />
