@@ -1036,6 +1036,18 @@ export default function Dashboard() {
           <AdminLoginModal onClose={() => setShowAdminModal(false)} />
         )}
       </AnimatePresence>
+
+      {/* Footer */}
+      <footer className="border-t border-white/5 mt-20 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground/50">
+          <span>© {new Date().getFullYear()} AdClarity</span>
+          <div className="flex items-center gap-4">
+            <button onClick={() => navigate("/legal")} className="hover:text-muted-foreground transition-colors">Privacy Policy</button>
+            <button onClick={() => navigate("/legal")} className="hover:text-muted-foreground transition-colors">Terms of Service</button>
+            <button onClick={() => navigate("/legal")} className="hover:text-muted-foreground transition-colors">Disclaimer</button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

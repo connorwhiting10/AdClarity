@@ -1,0 +1,73 @@
+Build a simple, clean web page (or React component if using a React app) that contains the following legal sections for a web application:
+
+STRUCTURE:
+- A single page with clear sections OR separate routes/pages:
+   - Privacy Policy
+   - Terms of Service
+   - Disclaimer
+
+STYLE:
+- Clean, modern, minimal UI
+- Good spacing and readable typography
+- Mobile responsive
+- Use headings, subheadings, and bullet points
+- Optional: simple navigation tabs or anchor links at the top
+
+CONTENT REQUIREMENTS:
+
+PRIVACY POLICY:
+Include the following points clearly:
+
+- The platform generates digital reports based on user input
+- No user accounts are required
+- No personal data is stored permanently
+- All user data is processed temporarily in memory and deleted after report generation
+- Two report delivery options:
+   1. Instant download (user must save immediately)
+   2. Temporary access link (expires after a short time, e.g. 30 minutes)
+- Reports cannot be recovered once downloaded or expired
+- No data is sold, shared, or reused
+- Payments are processed by a third-party provider (PayFast, South Africa)
+- The platform does not store payment details
+- Include a “User Responsibility” section stating users must save their reports
+
+TERMS OF SERVICE:
+Include:
+
+- Users must use the platform lawfully
+- No guarantee of service uptime or availability
+- No data retention policy explanation
+- Reports are not recoverable under any circumstances
+- Payments handled by PayFast (third-party)
+- Limitation of liability:
+   - Not responsible for lost data or reports
+   - Not responsible for decisions made using reports
+- Right to modify or discontinue the service at any time
+
+DISCLAIMER:
+Include:
+
+- Reports are generated automatically based on user input
+- No guarantee of accuracy or completeness
+- Reports are for informational purposes only
+- Use is at the user’s own risk
+
+EXTRA FEATURES TO ADD:
+
+1. Add a visible warning box:
+   "⚠️ This report will not be stored. Please download and save it. It cannot be recovered later."
+
+2. Add a checkbox (for use before payment later):
+   "I understand that my data will not be stored and my report cannot be recovered."
+
+3. Make the layout easy to plug into an existing app (modular component or separate page)
+
+TECH:
+- If React: create a functional component
+- If plain HTML: clean semantic HTML + basic CSS
+- Keep it lightweight (no heavy frameworks unless already used)
+
+OUTPUT:
+- Fully working code
+- Clearly structured sections
+- Ready to paste into a Replit project

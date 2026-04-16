@@ -6,6 +6,7 @@ import { AdminProvider } from "@/context/AdminContext";
 import { AuthProvider } from "@/context/AuthContext";
 import Dashboard from "@/pages/Dashboard";
 import Pricing from "@/pages/Pricing";
+import Legal from "@/pages/Legal";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -15,6 +16,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/pricing" component={Pricing} />
+      <Route path="/legal" component={Legal} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -454,6 +454,18 @@ export default function Pricing() {
           </div>
           <p className="text-xs text-muted-foreground mt-5">No credit card required · Cancel anytime</p>
         </motion.div>
+
+        {/* Footer */}
+        <footer className="border-t border-white/5 mt-16 pt-8 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground/50">
+            <span>© {new Date().getFullYear()} AdClarity</span>
+            <div className="flex items-center gap-4">
+              <button onClick={() => navigate("/legal")} className="hover:text-muted-foreground transition-colors">Privacy Policy</button>
+              <button onClick={() => navigate("/legal")} className="hover:text-muted-foreground transition-colors">Terms of Service</button>
+              <button onClick={() => navigate("/legal")} className="hover:text-muted-foreground transition-colors">Disclaimer</button>
+            </div>
+          </div>
+        </footer>
       </main>
 
       {/* Mobile sticky CTA */}
