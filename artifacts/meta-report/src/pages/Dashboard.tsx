@@ -51,7 +51,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAdmin } from "@/context/AdminContext";
 import { useAuth } from "@/context/AuthContext";
-import { AuthModal } from "@/components/AuthModal";
 
 function InsightCard({ insight, index }: { insight: AnalysisInsight; index: number }) {
   const config = {
@@ -311,13 +310,12 @@ export default function Dashboard() {
   const [reportData, setReportData] = useState<ParsedReport | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [reportsUsed, setReportsUsed] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { isAdmin, isPro, session: adminSession, logout: adminLogout } = useAdmin();
-  const { user, isLoggedIn, reportLimit, logout: authLogout } = useAuth();
+  const { user, isLoggedIn, reportLimit, logout: authLogout, login, signup } = useAuth();
 
   const effectiveLimit = isPro ? Infinity : reportLimit;
 
@@ -341,7 +339,7 @@ export default function Dashboard() {
       if (count >= effectiveLimit) {
         // If they haven't signed up yet, nudge them to sign up (3 free reports)
         if (!isLoggedIn) {
-          setShowAuthModal(true);
+          signup();
         } else {
           setShowUpgradeModal(true);
         }
@@ -456,7 +454,7 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <button
-                  onClick={() => setShowAuthModal(true)}
+                  onClick={() => login()}
                   className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-foreground/70 hover:text-foreground transition-colors border border-white/8 rounded-full px-3 py-1.5"
                 >
                   Sign in
@@ -1017,21 +1015,6 @@ export default function Dashboard() {
           <UpgradeModal
             onClose={() => setShowUpgradeModal(false)}
             onViewPricing={() => { setShowUpgradeModal(false); navigate("/pricing"); }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Auth modal */}
-      <AnimatePresence>
-        {showAuthModal && (
-          <AuthModal
-            initialMode="signup"
-            reason="limit"
-            onClose={() => setShowAuthModal(false)}
-            onSuccess={() => {
-              setReportsUsed(getReportCount());
-              toast({ title: "Account created! You now have 3 free reports per month." });
-            }}
           />
         )}
       </AnimatePresence>

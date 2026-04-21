@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import {
   Check,
@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AuthModal } from "@/components/AuthModal";
 import { useAuth } from "@/context/AuthContext";
 
 const ZAR_BASIC = 279;
@@ -138,9 +137,8 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 export default function Pricing() {
   const [annual, setAnnual] = useState(false);
   const [currency, setCurrency] = useState<"ZAR" | "USD">("ZAR");
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [, navigate] = useLocation();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, signup } = useAuth();
 
   const fmt = (zar: number, usd: number) =>
     currency === "ZAR" ? `R${zar.toLocaleString()}` : `$${usd}`;
@@ -163,7 +161,7 @@ export default function Pricing() {
     if (isLoggedIn) {
       navigate("/");
     } else {
-      setShowAuthModal(true);
+      signup();
     }
   };
 
@@ -476,16 +474,6 @@ export default function Pricing() {
         </Button>
       </div>
 
-      {/* Auth modal */}
-      <AnimatePresence>
-        {showAuthModal && (
-          <AuthModal
-            initialMode="signup"
-            onClose={() => setShowAuthModal(false)}
-            onSuccess={() => navigate("/")}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
