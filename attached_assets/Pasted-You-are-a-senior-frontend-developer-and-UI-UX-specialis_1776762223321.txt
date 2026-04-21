@@ -1,0 +1,166 @@
+You are a senior frontend developer and UI/UX specialist.
+
+Your task is to fix a broken login modal UI that is visually compressed, hard to read, and poorly spaced.
+
+---
+
+# 🚨 CURRENT ISSUES (FROM UI)
+
+The login modal has the following problems:
+
+- Input field blends into the background (low contrast)
+- Text is hard to read due to poor color contrast
+- Layout is vertically compressed
+- Button is too close to other elements
+- Overall spacing is inconsistent
+- Modal height is too small for content
+- UI feels cramped and unprofessional
+
+---
+
+# 🎯 OBJECTIVE
+
+Redesign and fix the login modal so it is:
+- Clean
+- Readable
+- Well spaced
+- Visually balanced
+- Fully responsive
+
+---
+
+# 🔧 REQUIRED FIXES
+
+## 1. FIX MODAL CONTAINER
+
+- Set max-width: 420px
+- Add padding: 24px–32px
+- Add proper vertical spacing between sections
+- Ensure height expands naturally (no fixed height)
+
+---
+
+## 2. IMPROVE TEXT CONTRAST
+
+- Use high contrast:
+  - Headline → white (#FFFFFF)
+  - Subtext → light gray (#A0AEC0 or similar)
+- Ensure readability on dark background
+
+---
+
+## 3. FIX INPUT FIELD (CRITICAL)
+
+Current issue: input blends into background
+
+Fix:
+- Add clear background:
+  background-color: #1F2937 (or slightly lighter than modal)
+- Add border:
+  border: 1px solid #374151
+- Add padding: 12px–14px
+- Rounded corners
+
+Placeholder text:
+- Lighter gray but still readable
+
+---
+
+## 4. FIX BUTTON SPACING
+
+- Add margin-top: 16px–20px
+- Full width button
+- Increase height (min 44px)
+
+---
+
+## 5. IMPROVE LAYOUT SPACING
+
+Use consistent vertical rhythm:
+
+- 16px between small elements
+- 24px between sections
+- 32px top/bottom padding
+
+---
+
+## 6. FIX GOOGLE BUTTON
+
+- Make it full width
+- Add padding
+- Add border or background contrast
+- Align icon and text properly
+
+---
+
+## 7. FIX “OR” DIVIDER
+
+- Add horizontal lines on both sides
+- Center text
+- Add spacing above and below
+
+---
+
+## 8. BOTTOM TEXT FIX
+
+“Don’t have an account? Sign up”
+
+- Add spacing above (16px)
+- Make “Sign up” clearly clickable
+- Use accent color
+
+---
+
+## 9. ADD VISUAL HIERARCHY
+
+Structure:
+
+1. Logo/Icon
+2. Heading (Welcome back)
+3. Subtext
+4. Google button
+5. Divider
+6. Email input
+7. CTA button
+8. Signup link
+
+Each section must have clear spacing
+
+---
+
+## 10. RESPONSIVENESS
+
+Ensure:
+- Modal looks clean on mobile
+- No overflow
+- Proper padding on small screens
+
+---
+
+# 🎨 DESIGN STYLE
+
+- Dark modern SaaS UI
+- Clean card layout
+- Subtle shadow
+- Rounded corners
+- Clear separation between elements
+
+---
+
+# 🧾 OUTPUT REQUIRED
+
+Provide:
+1. Fixed modal UI (React or HTML/CSS)
+2. Clean spacing system
+3. Improved input + button styling
+4. Responsive layout
+
+---
+
+# 🎯 GOAL
+
+Create a login modal that:
+- Looks premium
+- Is easy to read
+- Feels trustworthy
+- Does not feel cramped or broken
