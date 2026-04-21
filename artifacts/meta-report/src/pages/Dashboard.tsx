@@ -440,7 +440,13 @@ export default function Dashboard() {
             {!isAdmin && (
               isLoggedIn ? (
                 <div className="hidden sm:flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground truncate max-w-[120px]">{user?.email}</span>
+                  <button
+                    onClick={() => navigate("/account")}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate max-w-[120px]"
+                    title="My Account"
+                  >
+                    {user?.email}
+                  </button>
                   <button
                     onClick={authLogout}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors border border-white/5 rounded-full px-2.5 py-1"

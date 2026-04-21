@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-
-const STORAGE_KEY = "adclarity_user";
+import React, { createContext, useContext, useEffect } from "react";
+import { useUser, useClerk } from "@clerk/react";
 
 export type AuthUser = {
   email: string;
@@ -10,72 +9,61 @@ export type AuthUser = {
 type AuthContextValue = {
   user: AuthUser | null;
   isLoggedIn: boolean;
+  isLoaded: boolean;
   reportLimit: number;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  login: () => void;
+  signup: () => void;
+  loginWithGoogle: () => void;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   isLoggedIn: false,
+  isLoaded: false,
   reportLimit: 1,
-  login: async () => {},
-  signup: async () => {},
-  loginWithGoogle: async () => {},
+  login: () => {},
+  signup: () => {},
+  loginWithGoogle: () => {},
   logout: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const { user, isSignedIn, isLoaded } = useUser();
+  const { openSignIn, openSignUp, signOut } = useClerk();
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
+    if (isSignedIn && user) {
+      const email = user.primaryEmailAddress?.emailAddress;
+      if (email) {
+        fetch("/api/users/me", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        }).catch(() => {});
       }
     }
-  }, []);
+  }, [isSignedIn, user]);
 
-  const persist = (u: AuthUser) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-    setUser(u);
-  };
-
-  const login = useCallback(async (email: string, _password: string) => {
-    await new Promise((r) => setTimeout(r, 600));
-    persist({ email });
-  }, []);
-
-  const signup = useCallback(async (email: string, _password: string) => {
-    await new Promise((r) => setTimeout(r, 700));
-    persist({ email });
-  }, []);
-
-  const loginWithGoogle = useCallback(async () => {
-    await new Promise((r) => setTimeout(r, 400));
-    persist({ email: "google-user@gmail.com", name: "Google User" });
-  }, []);
-
-  const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    setUser(null);
-  }, []);
+  const authUser: AuthUser | null =
+    isSignedIn && user
+      ? {
+          email: user.primaryEmailAddress?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? "",
+          name: user.fullName ?? undefined,
+        }
+      : null;
 
   return (
     <AuthContext.Provider
       value={{
-        user,
-        isLoggedIn: !!user,
-        reportLimit: user ? 3 : 1,
-        login,
-        signup,
-        loginWithGoogle,
-        logout,
+        user: authUser,
+        isLoggedIn: isSignedIn ?? false,
+        isLoaded,
+        reportLimit: isSignedIn ? 3 : 1,
+        login: () => openSignIn(),
+        signup: () => openSignUp(),
+        loginWithGoogle: () => openSignIn(),
+        logout: () => signOut(),
       }}
     >
       {children}

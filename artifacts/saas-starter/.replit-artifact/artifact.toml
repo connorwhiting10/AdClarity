@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/saas-starter/"
+title = "SaaS Starter"
+version = "1.0.0"
+id = "artifacts/saas-starter"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/saas-starter/" ]
+localPort = 23372
+
+[services.development]
+run = "pnpm --filter @workspace/saas-starter run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/saas-starter", "run", "build" ]
+publicDir = "artifacts/saas-starter/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23372"
+BASE_PATH = "/saas-starter/"

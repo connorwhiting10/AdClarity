@@ -91,6 +91,24 @@ Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used b
 
 Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
 
+### `artifacts/meta-report` (`@workspace/meta-report`)
+
+AdClarity — React + Vite SPA for uploading Meta Ads .xlsx reports and getting a dashboard with summary cards, campaign breakdowns, 9-section analysis, CSV export, freemium gating, pricing page, and legal page.
+
+**Auth**: Uses real Clerk authentication (`@clerk/react` v6 + `@clerk/themes`). `AuthContext` wraps Clerk's `useUser` and `useClerk` hooks, exposing the same interface as before so `Dashboard.tsx` needed no structural changes.
+
+- `/sign-in` and `/sign-up` — dedicated Clerk pages (for OAuth callbacks)
+- `/account` — protected account page (redirects to `/` if not signed in)
+- Clerk `ClerkProvider` in `App.tsx` wraps `WouterRouter`; custom `appearance` matches the dark theme
+- After sign-in, a `useEffect` in `AuthContext` calls `POST /api/users/me` to upsert the user in PostgreSQL
+- Admin override remains: hidden `·` dot in the header → `AdminContext` JWT-based login (uses `ADMIN_ACCESS_CODE`)
+- Freemium: 1 free report/month for guests, 3/month for signed-in users, unlimited for admin/pro
+
+Env vars required:
+- `VITE_CLERK_PUBLISHABLE_KEY` — Clerk publishable key (client-side)
+- `CLERK_SECRET_KEY` — Clerk secret key (server-side, API)
+- `VITE_CLERK_PROXY_URL` — optional Clerk proxy URL
+
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
