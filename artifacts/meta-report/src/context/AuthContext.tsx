@@ -1,5 +1,6 @@
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useState, useCallback } from "react";
 import { useAuth as useReplitAuth, type AuthUser } from "@/hooks/use-auth";
+import AuthModal from "@/components/AuthModal";
 
 export type { AuthUser };
 
@@ -24,7 +25,16 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, isAuthenticated, login, logout } = useReplitAuth();
+  const { user, isLoading, isAuthenticated, login: doOidcLogin, logout } = useReplitAuth();
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const openModal = useCallback(() => setModalOpen(true), []);
+  const closeModal = useCallback(() => setModalOpen(false), []);
+
+  const handleContinue = useCallback(() => {
+    setModalOpen(false);
+    doOidcLogin();
+  }, [doOidcLogin]);
 
   return (
     <AuthContext.Provider
@@ -33,12 +43,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoggedIn: isAuthenticated,
         isLoaded: !isLoading,
         reportLimit: isAuthenticated ? 3 : 1,
-        login,
-        signup: login,
+        login: openModal,
+        signup: openModal,
         logout,
       }}
     >
       {children}
+      <AuthModal open={modalOpen} onClose={closeModal} onContinue={handleContinue} />
     </AuthContext.Provider>
   );
 }
