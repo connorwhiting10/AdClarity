@@ -1,0 +1,46 @@
+🔧 Prompt: Migrate Authentication from Clerk to Replit Auth
+
+I need you to refactor this project by completely removing Clerk authentication and replacing it with Replit’s native authentication system.
+
+🎯 Goal:
+Replace all Clerk-based auth with Replit Auth while keeping the rest of the app unchanged and fully functional.
+
+🧹 Step 1: Remove Clerk بالكامل
+- Uninstall all Clerk-related packages and dependencies.
+- Delete all Clerk imports, components, hooks, and middleware.
+- Remove Clerk environment variables (e.g. CLERK_SECRET_KEY, NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY).
+- Clean up any leftover or unused authentication code.
+
+🔐 Step 2: Implement Replit Auth
+- Set up Replit Auth using the official Replit authentication system.
+- Add login and session handling using Replit’s built-in user identity.
+- Ensure the authenticated user object is accessible throughout the app.
+
+🔄 Step 3: Update App Logic
+- Replace all references to Clerk user data with Replit Auth user data.
+- Update protected routes to check for authenticated Replit users.
+- Ensure session persistence works correctly across reloads.
+
+🎨 Step 4: Fix UI / Auth Flow
+- Remove Clerk UI components (login, signup, profile).
+- Replace with a simple Replit login flow (e.g. “Login with Replit” button).
+- Fix any broken or distorted UI in the current login/signup pages.
+- Ensure the auth flow is clean, readable, and user-friendly.
+
+🔒 Step 5: Security & Config
+- Configure any required environment variables for Replit Auth.
+- Ensure secure session handling.
+- Do not store unnecessary user data.
+
+✅ Step 6: Testing
+- Confirm login and logout work correctly.
+- Verify protected routes are secure.
+- Ensure no Clerk code remains anywhere in the project.
+- Make sure the app runs without errors.
+
+⚠️ Constraints:
+- Do NOT change any core business logic outside authentication.
+- Keep the implementation simple and clean.
+- Prioritize stability and usability.
+
+If you hit any ambiguity, default to the simplest working Replit-native auth implementation.

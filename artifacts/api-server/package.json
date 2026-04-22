@@ -9,7 +9,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@clerk/express": "^2.1.5",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "cookie-parser": "^1.4.7",
@@ -17,7 +16,8 @@
     "drizzle-orm": "catalog:",
     "express": "^5",
     "http-proxy-middleware": "^3.0.5",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "openid-client": "^6.8.3"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

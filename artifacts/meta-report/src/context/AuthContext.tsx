@@ -1,10 +1,7 @@
-import React, { createContext, useContext, useEffect } from "react";
-import { useUser, useClerk } from "@clerk/react";
+import React, { createContext, useContext } from "react";
+import { useAuth as useReplitAuth, type AuthUser } from "@/hooks/use-auth";
 
-export type AuthUser = {
-  email: string;
-  name?: string;
-};
+export type { AuthUser };
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -27,40 +24,18 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, isSignedIn, isLoaded } = useUser();
-  const { openSignIn, openSignUp, signOut } = useClerk();
-
-  useEffect(() => {
-    if (isSignedIn && user) {
-      const email = user.primaryEmailAddress?.emailAddress;
-      if (email) {
-        fetch("/api/users/me", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        }).catch(() => {});
-      }
-    }
-  }, [isSignedIn, user]);
-
-  const authUser: AuthUser | null =
-    isSignedIn && user
-      ? {
-          email: user.primaryEmailAddress?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? "",
-          name: user.fullName ?? undefined,
-        }
-      : null;
+  const { user, isLoading, isAuthenticated, login, logout } = useReplitAuth();
 
   return (
     <AuthContext.Provider
       value={{
-        user: authUser,
-        isLoggedIn: isSignedIn ?? false,
-        isLoaded,
-        reportLimit: isSignedIn ? 3 : 1,
-        login: () => openSignIn(),
-        signup: () => openSignUp(),
-        logout: () => signOut(),
+        user,
+        isLoggedIn: isAuthenticated,
+        isLoaded: !isLoading,
+        reportLimit: isAuthenticated ? 3 : 1,
+        login,
+        signup: login,
+        logout,
       }}
     >
       {children}
