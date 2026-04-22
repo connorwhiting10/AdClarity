@@ -13,7 +13,6 @@ type AuthContextValue = {
   reportLimit: number;
   login: () => void;
   signup: () => void;
-  loginWithGoogle: () => void;
   logout: () => void;
 };
 
@@ -24,7 +23,6 @@ const AuthContext = createContext<AuthContextValue>({
   reportLimit: 1,
   login: () => {},
   signup: () => {},
-  loginWithGoogle: () => {},
   logout: () => {},
 });
 
@@ -62,7 +60,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         reportLimit: isSignedIn ? 3 : 1,
         login: () => openSignIn(),
         signup: () => openSignUp(),
-        loginWithGoogle: () => openSignIn(),
         logout: () => signOut(),
       }}
     >

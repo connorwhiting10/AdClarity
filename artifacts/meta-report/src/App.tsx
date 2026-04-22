@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth as useClerkAuth } from "@clerk/react";
-import { shadcn } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AdminProvider } from "@/context/AdminContext";
@@ -16,7 +15,6 @@ import NotFound from "@/pages/not-found";
 const queryClient = new QueryClient();
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function stripBase(path: string): string {
@@ -78,7 +76,8 @@ const clerkAppearance = {
       color: "#94a3b8",
       fontSize: "0.875rem",
     },
-    logoBox: { display: "none" },
+    logoBox: { display: "none", height: "0", overflow: "hidden" },
+    logoImage: { display: "none" },
     main: {
       padding: "16px 24px 8px",
       gap: "16px",
@@ -229,7 +228,6 @@ function ClerkProviderWithRoutes() {
   return (
     <ClerkProvider
       publishableKey={clerkPubKey}
-      proxyUrl={clerkProxyUrl}
       appearance={clerkAppearance}
       localization={{
         signIn: {
