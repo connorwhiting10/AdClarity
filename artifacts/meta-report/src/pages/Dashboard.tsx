@@ -499,7 +499,7 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         <AnimatePresence mode="wait">
           {!reportData ? (
-            <motion.div 
+            <motion.div
               key="upload"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -514,6 +514,29 @@ export default function Dashboard() {
                   Upload your raw Meta Ads Excel export and instantly get a simplified dashboard, actionable metrics, and a clean CSV you can actually read.
                 </p>
               </div>
+
+              {/* AI layer teaser — visible whenever the toggle is ON but no report is loaded */}
+              {aiEnabled && (
+                <div className="w-full max-w-3xl mb-10">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-violet-300">
+                      Preview — AI layer on sample data
+                    </p>
+                    <Button size="sm" variant="outline" onClick={showSample} className="border-violet-500/30 hover:bg-violet-500/10">
+                      <FlaskConical className="w-3.5 h-3.5 mr-1.5" />
+                      Open full sample
+                    </Button>
+                  </div>
+                  <AIBriefingCard
+                    briefing={buildBriefing(getSampleReport())}
+                    onOpenChat={() => {
+                      setReportData(getSampleReport());
+                      setIsSampleMode(true);
+                      setShowChatDrawer(true);
+                    }}
+                  />
+                </div>
+              )}
 
               <Card 
                 className={`w-full max-w-xl transition-all duration-300 border-2 ${
