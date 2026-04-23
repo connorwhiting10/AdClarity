@@ -2,13 +2,11 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Activity, User, Mail, Calendar, LogOut, ChevronLeft, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAdmin } from "@/context/AdminContext";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Account() {
-  const { user, isLoaded, isLoggedIn, logout } = useAuth();
+  const { user, isLoaded, isLoggedIn, logout, plan, isAdmin } = useAuth();
   const [, navigate] = useLocation();
-  const { isAdmin } = useAdmin();
 
   if (!isLoaded) {
     return (
@@ -70,7 +68,7 @@ export default function Account() {
                 </div>
                 <div>
                   <p className="font-semibold text-foreground text-lg">{displayName}</p>
-                  <p className="text-sm text-muted-foreground">Free plan</p>
+                  <p className="text-sm text-muted-foreground capitalize">{plan} plan</p>
                 </div>
               </div>
 

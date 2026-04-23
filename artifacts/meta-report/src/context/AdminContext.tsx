@@ -1,16 +1,20 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import {
-  getStoredToken,
-  verifySession,
-  adminLogin,
-  adminLogout,
-  clearToken,
-  decodeTokenPayload,
-  type AdminSession,
-} from "@/lib/admin-auth";
+import React from "react";
+import { useAuth } from "@/context/AuthContext";
+
+/**
+ * Phase-4 shim: the admin-JWT system has been superseded by Supabase.
+ * This file re-exports the old surface backed by AuthContext so existing
+ * callers keep compiling. Phase 5 deletes it entirely.
+ */
+
+type AdminSessionShim = {
+  isAdmin: boolean;
+  plan: "free" | "basic" | "pro";
+  email?: string | null;
+} | null;
 
 type AdminContextValue = {
-  session: AdminSession | null;
+  session: AdminSessionShim;
   isAdmin: boolean;
   isPro: boolean;
   loading: boolean;
@@ -18,82 +22,22 @@ type AdminContextValue = {
   logout: () => Promise<void>;
 };
 
-const AdminContext = createContext<AdminContextValue>({
-  session: null,
-  isAdmin: false,
-  isPro: false,
-  loading: true,
-  login: async () => {},
-  logout: async () => {},
-});
-
 export function AdminProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<AdminSession | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const token = getStoredToken();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    // Apply session immediately from the stored token (no network needed)
-    const localSession = decodeTokenPayload(token);
-    setSession(localSession);
-    setLoading(false);
-
-    // Background server verification — quietly updates or clears if token invalid
-    verifySession(token).then((serverSession) => {
-      if (serverSession) {
-        setSession(serverSession);
-      } else {
-        // Server says token is invalid — clear it
-        clearToken();
-        setSession(null);
-      }
-    });
-  }, []);
-
-  const login = useCallback(async (email: string, accessCode: string) => {
-    // Call the server to sign the token
-    await adminLogin(email, accessCode);
-    const token = getStoredToken();
-    if (!token) throw new Error("Login failed — no token received");
-
-    // Apply session immediately from the freshly stored token
-    const localSession = decodeTokenPayload(token);
-    if (!localSession) throw new Error("Login failed — invalid token");
-    setSession(localSession);
-
-    // Background verification (non-blocking)
-    verifySession(token).then((serverSession) => {
-      if (serverSession) setSession(serverSession);
-    });
-  }, []);
-
-  const logout = useCallback(async () => {
-    await adminLogout();
-    clearToken();
-    setSession(null);
-  }, []);
-
-  return (
-    <AdminContext.Provider
-      value={{
-        session,
-        isAdmin: session?.isAdmin === true,
-        isPro: session?.plan === "pro",
-        loading,
-        login,
-        logout,
-      }}
-    >
-      {children}
-    </AdminContext.Provider>
-  );
+  return <>{children}</>;
 }
 
-export function useAdmin() {
-  return useContext(AdminContext);
+export function useAdmin(): AdminContextValue {
+  const { isAdmin, plan, isLoaded, logout, user } = useAuth();
+  return {
+    session: user
+      ? { isAdmin, plan, email: user.email }
+      : null,
+    isAdmin,
+    isPro: plan === "pro" || isAdmin,
+    loading: !isLoaded,
+    login: async () => {
+      // admin-JWT login is retired; real sign-in happens through AuthContext.
+    },
+    logout,
+  };
 }

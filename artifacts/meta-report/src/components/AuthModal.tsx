@@ -1,20 +1,20 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Activity, BarChart3, Download, FileSpreadsheet, ArrowRight } from "lucide-react";
+import { X, Activity } from "lucide-react";
+import SignInForm from "@/components/auth/SignInForm";
+import SignUpForm from "@/components/auth/SignUpForm";
+import OAuthButtons from "@/components/auth/OAuthButtons";
+
+export type AuthMode = "signin" | "signup";
 
 interface AuthModalProps {
   open: boolean;
+  mode: AuthMode;
   onClose: () => void;
-  onContinue: () => void;
+  onModeChange: (m: AuthMode) => void;
 }
 
-const perks = [
-  { icon: BarChart3, label: "3 reports per month", sub: "vs 1 as a guest" },
-  { icon: Download, label: "Full CSV export", sub: "download clean data" },
-  { icon: FileSpreadsheet, label: "9-section analysis", sub: "all insights unlocked" },
-];
-
-export default function AuthModal({ open, onClose, onContinue }: AuthModalProps) {
+export default function AuthModal({ open, mode, onClose, onModeChange }: AuthModalProps) {
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -63,36 +63,51 @@ export default function AuthModal({ open, onClose, onContinue }: AuthModalProps)
                   <span className="font-display font-bold text-base text-foreground">AdClarity</span>
                 </div>
 
-                <h2 className="font-display font-bold text-[22px] leading-snug text-foreground mb-1.5">
-                  Get more from your<br />Meta Ads data
+                <h2 className="font-display font-bold text-[22px] leading-snug text-foreground mb-4">
+                  {mode === "signin" ? "Welcome back" : "Create your account"}
                 </h2>
-                <p className="text-sm text-foreground/50 mb-5">
-                  Create a free account in seconds. No credit card needed.
-                </p>
 
-                <div className="space-y-2.5 mb-6">
-                  {perks.map(({ icon: Icon, label, sub }) => (
-                    <div key={label} className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                        <Icon className="w-3.5 h-3.5 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-sm font-medium text-foreground">{label}</span>
-                        <span className="text-xs text-foreground/40 ml-2">{sub}</span>
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex gap-1 p-1 bg-white/5 rounded-lg mb-4">
+                  <button
+                    onClick={() => onModeChange("signin")}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
+                      mode === "signin"
+                        ? "bg-white/10 text-foreground"
+                        : "text-foreground/50 hover:text-foreground/80"
+                    }`}
+                  >
+                    Sign in
+                  </button>
+                  <button
+                    onClick={() => onModeChange("signup")}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
+                      mode === "signup"
+                        ? "bg-white/10 text-foreground"
+                        : "text-foreground/50 hover:text-foreground/80"
+                    }`}
+                  >
+                    Sign up
+                  </button>
                 </div>
 
-                <button
-                  onClick={onContinue}
-                  className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white font-semibold text-sm rounded-xl py-3 transition-all shadow-[0_0_24px_-6px_rgba(24,119,242,0.6)] hover:shadow-[0_0_28px_-4px_rgba(24,119,242,0.7)]"
-                >
-                  Continue
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                {mode === "signin" ? (
+                  <SignInForm onSuccess={onClose} />
+                ) : (
+                  <SignUpForm onSuccess={onClose} />
+                )}
 
-                <p className="text-center text-[11px] text-foreground/30 mt-3">
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/10" />
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="px-2 text-[11px] text-foreground/40 bg-[#0d1117]">or</span>
+                  </div>
+                </div>
+
+                <OAuthButtons />
+
+                <p className="text-center text-[11px] text-foreground/30 mt-4">
                   By continuing you agree to our{" "}
                   <a href="/legal" className="underline underline-offset-2 hover:text-foreground/50 transition-colors">
                     Terms &amp; Privacy
