@@ -22,7 +22,9 @@ export function useAuth(): AuthState {
   const { openSignIn, signOut } = useClerk();
 
   const login = useCallback(() => openSignIn(), [openSignIn]);
-  const logout = useCallback(() => signOut(), [signOut]);
+  const logout = useCallback(() => {
+    signOut().catch(() => window.location.reload());
+  }, [signOut]);
 
   return {
     user: isLoaded && user

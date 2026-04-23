@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { useAuth as useReplitAuth, type AuthUser } from "@/hooks/use-auth";
+import { useAuth as useClerkAuth, type AuthUser } from "@/hooks/use-auth";
 import AuthModal from "@/components/AuthModal";
 
 export type { AuthUser };
@@ -24,8 +24,23 @@ const AuthContext = createContext<AuthContextValue>({
   logout: () => {},
 });
 
+/**
+ * Derives the Clerk hosted sign-in URL from the publishable key.
+ * Clerk's publishable key encodes the frontend API host in base64.
+ * This lets us navigate directly to Clerk's hosted sign-in page, which
+ * works in all environments (including iframes and unlisted domains).
+ */
+function buildClerkSignInUrl(): string {
+  const pk = (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string) ?? "";
+  const b64 = pk.replace(/^pk_(test|live)_/, "");
+  const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+  const frontendApi = atob(padded).replace(/\$+$/, "").trim();
+  const returnUrl = encodeURIComponent(window.location.href);
+  return `https://${frontendApi}/sign-in?redirect_url=${returnUrl}`;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, isAuthenticated, login: doOidcLogin, logout } = useReplitAuth();
+  const { user, isLoading, isAuthenticated, logout } = useClerkAuth();
   const [modalOpen, setModalOpen] = useState(false);
 
   const openModal = useCallback(() => setModalOpen(true), []);
@@ -33,8 +48,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleContinue = useCallback(() => {
     setModalOpen(false);
-    doOidcLogin();
-  }, [doOidcLogin]);
+    // Navigate the top-level window so it works even inside Replit's iframe preview
+    const target = window.top ?? window;
+    target.location.href = buildClerkSignInUrl();
+  }, []);
 
   return (
     <AuthContext.Provider
