@@ -1,5 +1,29 @@
 import { useState, useEffect, useCallback } from "react";
 
+// TODO (Clerk): Replace this entire hook with Clerk hooks:
+//
+// import { useUser, useClerk } from "@clerk/react";
+//
+// export function useAuth(): AuthState {
+//   const { user, isLoaded } = useUser();
+//   const { signOut, openSignIn } = useClerk();
+//
+//   const login = useCallback(() => openSignIn(), [openSignIn]);
+//   const logout = useCallback(() => signOut(), [signOut]);
+//
+//   return {
+//     user: isLoaded && user
+//       ? { id: user.id, email: user.primaryEmailAddress?.emailAddress ?? null,
+//           firstName: user.firstName ?? null, lastName: user.lastName ?? null,
+//           profileImageUrl: user.imageUrl ?? null }
+//       : null,
+//     isLoading: !isLoaded,
+//     isAuthenticated: !!user,
+//     login,
+//     logout,
+//   };
+// }
+
 export interface AuthUser {
   id: string;
   email: string | null;

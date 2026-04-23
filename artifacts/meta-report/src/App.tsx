@@ -10,6 +10,10 @@ import Legal from "@/pages/Legal";
 import Account from "@/pages/Account";
 import NotFound from "@/pages/not-found";
 
+// TODO (Clerk — step 1 of 2):
+// import { ClerkProvider } from "@clerk/react";
+// import { dark } from "@clerk/themes";
+
 const queryClient = new QueryClient();
 
 const basePath = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
@@ -27,6 +31,14 @@ function Router() {
 }
 
 function App() {
+  // TODO (Clerk — step 2 of 2):
+  // Wrap <WouterRouter> with:
+  //   <ClerkProvider
+  //     publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+  //     appearance={{ baseTheme: dark, variables: { colorPrimary: "#1877F2" } }}
+  //   >
+  //     ...
+  //   </ClerkProvider>
   return (
     <WouterRouter base={basePath}>
       <QueryClientProvider client={queryClient}>

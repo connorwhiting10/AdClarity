@@ -1,16 +1,16 @@
 import express, { type Express } from "express";
 import cors from "cors";
-import cookieParser from "cookie-parser";
-import { authMiddleware } from "./middlewares/authMiddleware";
 import router from "./routes";
+
+// TODO (Clerk): import { clerkMiddleware } from "@clerk/express";
 
 const app: Express = express();
 
 app.use(cors({ credentials: true, origin: true }));
-app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(authMiddleware);
+
+// TODO (Clerk): app.use(clerkMiddleware());
 
 app.use("/api", router);
 

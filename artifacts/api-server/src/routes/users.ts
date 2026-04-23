@@ -2,38 +2,23 @@ import { Router } from "express";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
+// TODO (Clerk): import { getAuth } from "@clerk/express";
+
 const router = Router();
 
+/**
+ * GET /api/users/me
+ *
+ * Returns the DB record for the authenticated user.
+ *
+ * TODO (Clerk): Replace the auth check with:
+ *   const { userId } = getAuth(req);
+ *   if (!userId) return res.status(401).json({ error: "Unauthorized" });
+ *   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+ */
 router.get("/me", async (req, res) => {
-  if (!req.isAuthenticated()) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-
-  try {
-    const [user] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, req.user.id))
-      .limit(1);
-
-    if (!user) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
-
-    res.json({
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      profileImageUrl: user.profileImageUrl,
-      createdAt: user.createdAt,
-    });
-  } catch (err) {
-    console.error("GET /users/me error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
+  // Stub: no auth until Clerk is installed
+  res.status(401).json({ error: "Unauthorized" });
 });
 
 export default router;

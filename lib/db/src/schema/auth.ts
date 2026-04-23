@@ -1,18 +1,17 @@
-import { sql } from "drizzle-orm";
-import { index, jsonb, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
 
-export const sessionsTable = pgTable(
-  "sessions",
-  {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
-  },
-  (table) => [index("IDX_session_expire").on(table.expire)],
-);
-
+/**
+ * users — one row per authenticated user.
+ *
+ * `id` stores the Clerk user ID (e.g. "user_2abc123…").
+ * It is provided by Clerk on first sign-in; never auto-generated here.
+ *
+ * Upserted by the API server on every sign-in via:
+ *   db.insert(usersTable).values({ id: clerkUserId, ... })
+ *     .onConflictDoUpdate({ target: usersTable.id, set: { ...profile, updatedAt: new Date() } })
+ */
 export const usersTable = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),

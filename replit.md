@@ -95,25 +95,29 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 
 AdClarity — React + Vite SPA for uploading Meta Ads .xlsx reports and getting a dashboard with summary cards, campaign breakdowns, 9-section analysis, CSV export, freemium gating, pricing page, and legal page.
 
-**Auth**: Uses Replit Auth (OIDC/PKCE via `openid-client`). Sessions are stored in PostgreSQL (`sessions` table). The frontend fetches `/api/auth/user` with credentials to check auth state. Login = redirect to `/api/login?returnTo=...`; logout = `/api/logout`.
+**Auth**: Currently stubbed — `/api/auth/user` always returns `{ user: null }`. Codebase is fully prepared for Clerk. Sign-in flow shows an in-app modal (`AuthModal.tsx`) before redirecting.
 
-- `src/hooks/use-auth.ts` — raw React hook that fetches `/api/auth/user`
+**To activate Clerk (3 steps):**
+1. `pnpm add @clerk/react @clerk/express` (in meta-report + api-server)
+2. Add `VITE_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY` to Replit Secrets
+3. Follow the `// TODO (Clerk)` comments in `App.tsx`, `use-auth.ts`, `routes/oidc.ts`, and `app.ts`
+
+- `src/hooks/use-auth.ts` — fetch-based stub; replace with `useUser`/`useClerk` from `@clerk/react` (TODO comment inside)
 - `src/context/AuthContext.tsx` — wraps `useAuth`, adds `isLoggedIn`, `reportLimit`, `signup` alias
+- `src/components/AuthModal.tsx` — in-app sign-in modal (provider-agnostic UI, keep as-is)
 - `/account` — protected account page (redirects to `/` if not signed in)
-- No Clerk packages; no `/sign-in` or `/sign-up` routes
 - Admin override: hidden `·` dot in the header → `AdminContext` JWT-based login (uses `ADMIN_ACCESS_CODE`)
 - Freemium: 1 free report/month for guests, 3/month for signed-in users, unlimited for admin/pro
 
 **API Server Auth** (`artifacts/api-server`):
-- `src/lib/auth.ts` — OIDC discovery, session CRUD, `AuthUser` type
-- `src/middlewares/authMiddleware.ts` — loads session from cookie on every request
-- `src/routes/oidc.ts` — `GET /api/auth/user`, `GET /api/login`, `GET /api/callback`, `GET /api/logout`
-- `src/routes/auth.ts` — admin login/verify/logout at `/api/auth/admin-*`
+- `src/routes/oidc.ts` — stub `GET /api/auth/user` → `{ user: null }`; replace body with `getAuth(req)` from `@clerk/express` (TODO comment inside)
+- `src/routes/auth.ts` — admin login/verify/logout at `/api/auth/admin-*` (unchanged)
+- `src/app.ts` — marked TODO for `clerkMiddleware()` from `@clerk/express`
 
 **DB Schema** (`lib/db`):
-- `src/schema/auth.ts` — `usersTable` (id varchar, email, firstName, lastName, profileImageUrl) + `sessionsTable` (id, userId, expiresAt)
+- `src/schema/auth.ts` — `usersTable` only (id = Clerk user ID varchar PK, email, firstName, lastName, profileImageUrl, createdAt, updatedAt). No sessions table (Clerk uses JWTs).
 
-Env vars required: none beyond `DATABASE_URL` (auto-provided by Replit) and `REPL_ID` (runtime-managed by Replit).
+Env vars required: `DATABASE_URL` (auto-provided). `VITE_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY` once Clerk is activated.
 
 ### `scripts` (`@workspace/scripts`)
 
