@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 function InsightCard({ insight, index }: { insight: AnalysisInsight; index: number }) {
   const config = {
@@ -163,24 +164,26 @@ function FunnelViz({ stages }: { stages: FunnelStage[] }) {
   );
 }
 
-const FREE_REPORT_LIMIT = 1;
-const STORAGE_KEY = "adclarity_report_count";
-const CURRENT_MONTH_KEY = "adclarity_report_month";
+// Guest (not signed in) report counter lives in localStorage since guests
+// have no Supabase profile. Signed-in users are tracked server-side via the
+// usage table and can_create_report() RLS gate.
+const GUEST_STORAGE_KEY = "adclarity_report_count";
+const GUEST_MONTH_KEY = "adclarity_report_month";
 
-function getReportCount(): number {
-  const storedMonth = localStorage.getItem(CURRENT_MONTH_KEY);
+function getGuestReportCount(): number {
+  const storedMonth = localStorage.getItem(GUEST_MONTH_KEY);
   const thisMonth = new Date().toISOString().slice(0, 7);
   if (storedMonth !== thisMonth) {
-    localStorage.setItem(CURRENT_MONTH_KEY, thisMonth);
-    localStorage.setItem(STORAGE_KEY, "0");
+    localStorage.setItem(GUEST_MONTH_KEY, thisMonth);
+    localStorage.setItem(GUEST_STORAGE_KEY, "0");
     return 0;
   }
-  return parseInt(localStorage.getItem(STORAGE_KEY) ?? "0", 10);
+  return parseInt(localStorage.getItem(GUEST_STORAGE_KEY) ?? "0", 10);
 }
 
-function incrementReportCount() {
-  const count = getReportCount();
-  localStorage.setItem(STORAGE_KEY, String(count + 1));
+function incrementGuestReportCount() {
+  const count = getGuestReportCount();
+  localStorage.setItem(GUEST_STORAGE_KEY, String(count + 1));
 }
 
 function UpgradeModal({ onClose, onViewPricing }: { onClose: () => void; onViewPricing: () => void }) {
@@ -242,14 +245,30 @@ export default function Dashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const { user, isLoggedIn, reportLimit, logout: authLogout, login, signup, isAdmin, plan } = useAuth();
+  const { user, isLoggedIn, reportLimit, logout: authLogout, login, signup, isAdmin, plan, session } = useAuth();
   const isPro = plan === "pro" || isAdmin;
 
   const effectiveLimit = isPro ? Infinity : reportLimit;
 
+  // Read monthly usage for the signed-in user; guests use localStorage.
+  const fetchUsage = useCallback(async () => {
+    if (!session?.user) {
+      setReportsUsed(getGuestReportCount());
+      return;
+    }
+    const monthStart = new Date().toISOString().slice(0, 7) + "-01";
+    const { data } = await supabase
+      .from("usage")
+      .select("report_count")
+      .eq("user_id", session.user.id)
+      .eq("month", monthStart)
+      .maybeSingle();
+    setReportsUsed(data?.report_count ?? 0);
+  }, [session]);
+
   useEffect(() => {
-    setReportsUsed(getReportCount());
-  }, []);
+    fetchUsage();
+  }, [fetchUsage]);
 
   const handleFile = async (file: File) => {
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.csv')) {
@@ -261,27 +280,47 @@ export default function Dashboard() {
       return;
     }
 
-    // Admin/Pro users bypass the freemium gate entirely
-    if (!isPro) {
-      const count = getReportCount();
-      if (count >= effectiveLimit) {
-        // If they haven't signed up yet, nudge them to sign up (3 free reports)
-        if (!isLoggedIn) {
-          signup();
-        } else {
-          setShowUpgradeModal(true);
-        }
-        return;
-      }
+    // Guest gate: no account → 1 free report, then nudge to sign up.
+    if (!isLoggedIn && getGuestReportCount() >= effectiveLimit) {
+      signup();
+      return;
     }
 
     setIsProcessing(true);
     try {
       const parsed = await parseMetaReport(file);
-      if (!isPro) {
-        incrementReportCount();
-        setReportsUsed(getReportCount());
+
+      if (isLoggedIn && session?.user) {
+        // Server-side enforcement: RLS can_create_report() gates the insert.
+        const { error } = await supabase.from("reports").insert({
+          user_id: session.user.id,
+          filename: file.name,
+          analysis: parsed.analysis as never,
+          summary: parsed.summary as never,
+          date_range: parsed.dateRange,
+        });
+        if (error) {
+          const isLimitBlock =
+            error.code === "42501" ||
+            error.message.toLowerCase().includes("row-level security");
+          if (isLimitBlock && !isPro) {
+            setShowUpgradeModal(true);
+          } else {
+            toast({
+              title: "Could not save report",
+              description: error.message,
+              variant: "destructive",
+            });
+          }
+          return;
+        }
+        await fetchUsage();
+      } else {
+        // Guest: local-only. Do not persist to DB.
+        incrementGuestReportCount();
+        setReportsUsed(getGuestReportCount());
       }
+
       setReportData(parsed);
       toast({
         title: "Report parsed successfully!",

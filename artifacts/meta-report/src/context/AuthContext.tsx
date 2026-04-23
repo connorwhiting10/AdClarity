@@ -112,7 +112,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loadProfile]);
 
   const plan: Plan = profile?.plan ?? "free";
-  const reportLimit = isAdmin ? Infinity : limitForPlan(plan);
+  const reportLimit = isAdmin
+    ? Infinity
+    : !session
+      ? 1 // guest (no account) — nudge to sign up after first report
+      : limitForPlan(plan);
 
   const openLogin = useCallback(() => {
     setModalMode("signin");
