@@ -1,19 +1,19 @@
 import { useState } from "react";
-import { FaGoogle, FaFacebook } from "react-icons/fa";
+import { FaGoogle } from "react-icons/fa";
 import { useAuth } from "@/context/AuthContext";
 
 export default function OAuthButtons() {
   const { signInWithOAuth } = useAuth();
-  const [busy, setBusy] = useState<"google" | "facebook" | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const onClick = async (provider: "google" | "facebook") => {
-    setBusy(provider);
+  const onClick = async () => {
+    setBusy(true);
     setError(null);
-    const { error: err } = await signInWithOAuth(provider);
+    const { error: err } = await signInWithOAuth("google");
     if (err) {
       setError(err);
-      setBusy(null);
+      setBusy(false);
     }
     // On success the browser redirects; no further state needed.
   };
@@ -22,21 +22,12 @@ export default function OAuthButtons() {
     <div className="space-y-2">
       <button
         type="button"
-        onClick={() => onClick("google")}
-        disabled={!!busy}
+        onClick={onClick}
+        disabled={busy}
         className="w-full flex items-center justify-center gap-2 border border-white/10 bg-white/5 hover:bg-white/10 text-foreground font-medium text-sm rounded-xl py-2.5 transition-all disabled:opacity-50"
       >
         <FaGoogle className="w-4 h-4" />
         Continue with Google
-      </button>
-      <button
-        type="button"
-        onClick={() => onClick("facebook")}
-        disabled={!!busy}
-        className="w-full flex items-center justify-center gap-2 border border-white/10 bg-white/5 hover:bg-white/10 text-foreground font-medium text-sm rounded-xl py-2.5 transition-all disabled:opacity-50"
-      >
-        <FaFacebook className="w-4 h-4" />
-        Continue with Facebook
       </button>
       {error && <p className="text-xs text-red-400 text-center">{error}</p>}
     </div>
