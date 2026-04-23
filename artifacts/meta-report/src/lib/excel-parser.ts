@@ -124,7 +124,7 @@ export interface ParsedReport {
   analysis: ReportAnalysis;
 }
 
-function generateAnalysis(
+export function generateAnalysis(
   summary: ParsedReport['summary'],
   byCampaign: MetricSummary[],
   byAge: MetricSummary[],

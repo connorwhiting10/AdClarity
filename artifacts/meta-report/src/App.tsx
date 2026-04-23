@@ -7,6 +7,7 @@ import Dashboard from "@/pages/Dashboard";
 import Pricing from "@/pages/Pricing";
 import Legal from "@/pages/Legal";
 import Account from "@/pages/Account";
+import Reports from "@/pages/Reports";
 import AuthCallback from "@/pages/AuthCallback";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/not-found";
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/pricing" component={Pricing} />
       <Route path="/legal" component={Legal} />
       <Route path="/account" component={Account} />
+      <Route path="/reports" component={Reports} />
       <Route path="/auth/callback" component={AuthCallback} />
       <Route path="/auth/reset-password" component={ResetPassword} />
       <Route component={NotFound} />

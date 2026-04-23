@@ -51,6 +51,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { getSampleReport } from "@/lib/sample-report";
 
 function InsightCard({ insight, index }: { insight: AnalysisInsight; index: number }) {
   const config = {
@@ -242,6 +243,7 @@ export default function Dashboard() {
   const [reportData, setReportData] = useState<ParsedReport | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [reportsUsed, setReportsUsed] = useState(0);
+  const [isSampleMode, setIsSampleMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -270,6 +272,20 @@ export default function Dashboard() {
     fetchUsage();
   }, [fetchUsage]);
 
+  // Rehydrate a saved report when navigated from /reports.
+  useEffect(() => {
+    const raw = sessionStorage.getItem("adclarity_view_report");
+    if (!raw) return;
+    sessionStorage.removeItem("adclarity_view_report");
+    try {
+      const parsed = JSON.parse(raw) as ParsedReport;
+      setReportData(parsed);
+      setIsSampleMode(false);
+    } catch {
+      // Malformed payload — ignore.
+    }
+  }, []);
+
   const handleFile = async (file: File) => {
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.csv')) {
       toast({
@@ -292,10 +308,11 @@ export default function Dashboard() {
 
       if (isLoggedIn && session?.user) {
         // Server-side enforcement: RLS can_create_report() gates the insert.
+        // analysis jsonb holds the full ParsedReport so /reports can rehydrate.
         const { error } = await supabase.from("reports").insert({
           user_id: session.user.id,
           filename: file.name,
-          analysis: parsed.analysis as never,
+          analysis: parsed as never,
           summary: parsed.summary as never,
           date_range: parsed.dateRange,
         });
@@ -355,7 +372,15 @@ export default function Dashboard() {
     }
   }, []);
 
-  const resetState = () => setReportData(null);
+  const resetState = () => {
+    setReportData(null);
+    setIsSampleMode(false);
+  };
+
+  const showSample = () => {
+    setReportData(getSampleReport());
+    setIsSampleMode(true);
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
@@ -388,6 +413,17 @@ export default function Dashboard() {
                   ? `${effectiveLimit - reportsUsed} free report${effectiveLimit - reportsUsed !== 1 ? "s" : ""} left`
                   : "Free limit reached"}
               </span>
+            )}
+
+            {/* History link — only when signed in */}
+            {isLoggedIn && (
+              <button
+                onClick={() => navigate("/reports")}
+                className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-foreground/70 hover:text-foreground transition-colors border border-white/8 rounded-full px-3 py-1.5"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                History
+              </button>
             )}
 
             {/* View Plans button — hidden for admin */}
@@ -504,16 +540,27 @@ export default function Dashboard() {
                         className="hidden" 
                       />
                       
-                      <Button 
-                        size="lg" 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full sm:w-auto relative group overflow-hidden"
-                      >
-                        <span className="relative z-10 flex items-center">
-                          <FileSpreadsheet className="w-5 h-5 mr-2" />
-                          Select Excel File
-                        </span>
-                      </Button>
+                      <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        <Button
+                          size="lg"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full sm:w-auto relative group overflow-hidden"
+                        >
+                          <span className="relative z-10 flex items-center">
+                            <FileSpreadsheet className="w-5 h-5 mr-2" />
+                            Select Excel File
+                          </span>
+                        </Button>
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          onClick={showSample}
+                          className="w-full sm:w-auto border-white/10 hover:bg-white/5"
+                        >
+                          <FlaskConical className="w-5 h-5 mr-2" />
+                          See sample analysis
+                        </Button>
+                      </div>
 
                       <p className="text-xs text-muted-foreground mt-4">
                         {isLoggedIn
@@ -527,12 +574,30 @@ export default function Dashboard() {
 
             </motion.div>
           ) : (
-            <motion.div 
+            <motion.div
               key="dashboard"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="space-y-8"
             >
+              {isSampleMode && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-violet-500/20 bg-violet-500/5 px-4 py-3 text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="w-4 h-4 text-violet-400" />
+                    <span className="text-violet-200">
+                      This is sample data. Upload your Meta Ads export to analyze your own account.
+                    </span>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={resetState} className="border-violet-500/30 hover:bg-violet-500/10">
+                    Upload your report
+                  </Button>
+                </motion.div>
+              )}
+
               {/* SUMMARY CARDS */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
