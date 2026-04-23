@@ -3,9 +3,6 @@ modules = ["nodejs-24"]
 [[artifacts]]
 id = "artifacts/api-server"
 
-[[artifacts]]
-id = "artifacts/mockup-sandbox"
-
 [deployment]
 router = "application"
 deploymentTarget = "autoscale"
@@ -28,5 +25,3 @@ timeoutMs = 20000
 [userenv]
 
 [userenv.shared]
-ADMIN_EMAILS = "connorwhiting10@gmail.com"
-TEST_MODE = "false"
