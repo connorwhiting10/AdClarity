@@ -50,8 +50,14 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import { useAILayer } from "@/context/AILayerContext";
 import { supabase } from "@/lib/supabase";
 import { getSampleReport } from "@/lib/sample-report";
+import AIToggle from "@/components/ai/AIToggle";
+import AIBriefingCard from "@/components/ai/AIBriefingCard";
+import AIChatDrawer from "@/components/ai/AIChatDrawer";
+import AIOrb from "@/components/ai/AIOrb";
+import { buildBriefing } from "@/lib/ai-briefing";
 
 function InsightCard({ insight, index }: { insight: AnalysisInsight; index: number }) {
   const config = {
@@ -244,6 +250,8 @@ export default function Dashboard() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [reportsUsed, setReportsUsed] = useState(0);
   const [isSampleMode, setIsSampleMode] = useState(false);
+  const [showChatDrawer, setShowChatDrawer] = useState(false);
+  const { enabled: aiEnabled } = useAILayer();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -397,6 +405,9 @@ export default function Dashboard() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* AI Layer toggle — always visible so demo can switch live */}
+            <AIToggle />
+
             {/* Admin badge */}
             {isAdmin && (
               <span className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-full px-3 py-1">
@@ -596,6 +607,14 @@ export default function Dashboard() {
                     Upload your report
                   </Button>
                 </motion.div>
+              )}
+
+              {/* AI LAYER — briefing on top of the report when toggle is on */}
+              {aiEnabled && (
+                <AIBriefingCard
+                  briefing={buildBriefing(reportData)}
+                  onOpenChat={() => setShowChatDrawer(true)}
+                />
               )}
 
               {/* SUMMARY CARDS */}
@@ -1030,6 +1049,28 @@ export default function Dashboard() {
           />
         )}
       </AnimatePresence>
+
+      {/* Floating AI orb — visible on dashboard view when AI layer is on */}
+      {aiEnabled && reportData && (
+        <div className="fixed bottom-6 right-6 z-30">
+          <div className="flex items-center gap-2 rounded-full bg-[#0d1117]/90 backdrop-blur-lg border border-white/10 pr-4 pl-1 py-1 shadow-[0_0_40px_-10px_rgba(139,92,246,0.4)]">
+            <AIOrb size="md" onClick={() => setShowChatDrawer(true)} />
+            <span className="text-xs font-semibold text-foreground/80 hidden sm:inline">
+              Ask the AI
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* AI chat drawer */}
+      {reportData && (
+        <AIChatDrawer
+          open={showChatDrawer}
+          onClose={() => setShowChatDrawer(false)}
+          report={reportData}
+          briefing={buildBriefing(reportData)}
+        />
+      )}
 
       {/* Footer */}
       <footer className="border-t border-white/5 mt-20 py-6">

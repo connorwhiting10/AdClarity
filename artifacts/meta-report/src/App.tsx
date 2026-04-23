@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/AuthContext";
+import { AILayerProvider } from "@/context/AILayerContext";
 import Dashboard from "@/pages/Dashboard";
 import Pricing from "@/pages/Pricing";
 import Legal from "@/pages/Legal";
@@ -36,7 +37,9 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>
-            <Router />
+            <AILayerProvider>
+              <Router />
+            </AILayerProvider>
           </AuthProvider>
           <Toaster />
         </TooltipProvider>
