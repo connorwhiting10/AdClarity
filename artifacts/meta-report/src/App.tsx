@@ -1,5 +1,7 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ClerkProvider } from "@clerk/react";
+import { dark } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AdminProvider } from "@/context/AdminContext";
@@ -10,12 +12,7 @@ import Legal from "@/pages/Legal";
 import Account from "@/pages/Account";
 import NotFound from "@/pages/not-found";
 
-// TODO (Clerk — step 1 of 2):
-// import { ClerkProvider } from "@clerk/react";
-// import { dark } from "@clerk/themes";
-
 const queryClient = new QueryClient();
-
 const basePath = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
 function Router() {
@@ -31,27 +28,31 @@ function Router() {
 }
 
 function App() {
-  // TODO (Clerk — step 2 of 2):
-  // Wrap <WouterRouter> with:
-  //   <ClerkProvider
-  //     publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
-  //     appearance={{ baseTheme: dark, variables: { colorPrimary: "#1877F2" } }}
-  //   >
-  //     ...
-  //   </ClerkProvider>
   return (
-    <WouterRouter base={basePath}>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <AuthProvider>
-            <AdminProvider>
-              <Router />
-            </AdminProvider>
-          </AuthProvider>
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </WouterRouter>
+    <ClerkProvider
+      publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+      appearance={{
+        baseTheme: dark,
+        variables: {
+          colorPrimary: "#1877F2",
+          colorBackground: "#0d1117",
+          borderRadius: "0.75rem",
+        },
+      }}
+    >
+      <WouterRouter base={basePath}>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <AuthProvider>
+              <AdminProvider>
+                <Router />
+              </AdminProvider>
+            </AuthProvider>
+            <Toaster />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </WouterRouter>
+    </ClerkProvider>
   );
 }
 
