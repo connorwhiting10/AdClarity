@@ -77,28 +77,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [modalMode, setModalMode] = useState<ModalMode>("signin");
 
   const loadProfile = useCallback(async (userId: string) => {
-    const [{ data: p }, { data: adminRow }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
-      supabase.from("admins").select("user_id").eq("user_id", userId).maybeSingle(),
-    ]);
-    setProfile(p ?? null);
-    setIsAdmin(!!adminRow);
+    try {
+      const [{ data: p }, { data: adminRow }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+        supabase.from("admins").select("user_id").eq("user_id", userId).maybeSingle(),
+      ]);
+      setProfile(p ?? null);
+      setIsAdmin(!!adminRow);
+    } catch (err) {
+      console.error("loadProfile failed", err);
+      // Leave whatever profile we already have; don't block the UI.
+    }
   }, []);
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    // Flip isLoaded as soon as we know the session, regardless of whether
+    // the profile fetch has finished — a stalled profile query must not
+    // wedge the whole app in a loading spinner.
+    supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       setSession(data.session);
-      if (data.session?.user) await loadProfile(data.session.user.id);
       setIsLoaded(true);
+      if (data.session?.user) void loadProfile(data.session.user.id);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!mounted) return;
       setSession(newSession);
       if (newSession?.user) {
-        await loadProfile(newSession.user.id);
+        void loadProfile(newSession.user.id);
       } else {
         setProfile(null);
         setIsAdmin(false);
@@ -129,7 +138,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const closeModal = useCallback(() => setModalOpen(false), []);
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("signOut failed; clearing session locally", err);
+    } finally {
+      // Force local state clear so UI updates even if the server call hung.
+      setSession(null);
+      setProfile(null);
+      setIsAdmin(false);
+    }
   }, []);
 
   const signInWithPassword = useCallback(async (email: string, password: string) => {
