@@ -1,23 +1,13 @@
 import { Router } from "express";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
-
-// TODO (Clerk): import { getAuth } from "@clerk/express";
 
 const router = Router();
 
 /**
  * GET /api/users/me
- *
- * Returns the DB record for the authenticated user.
- *
- * TODO (Clerk): Replace the auth check with:
- *   const { userId } = getAuth(req);
- *   if (!userId) return res.status(401).json({ error: "Unauthorized" });
- *   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+ * Stubbed 401 — frontend now reads profile directly from Supabase.
+ * Route file scheduled for removal in Phase 6 of the Supabase migration.
  */
-router.get("/me", async (req, res) => {
-  // Stub: no auth until Clerk is installed
+router.get("/me", async (_req, res) => {
   res.status(401).json({ error: "Unauthorized" });
 });
 
