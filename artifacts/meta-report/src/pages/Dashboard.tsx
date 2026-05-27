@@ -49,8 +49,15 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { useAdmin } from "@/context/AdminContext";
 import { useAuth } from "@/context/AuthContext";
+import { useAILayer } from "@/context/AILayerContext";
+import { supabase } from "@/lib/supabase";
+import { getSampleReport } from "@/lib/sample-report";
+import AIToggle from "@/components/ai/AIToggle";
+import AIBriefingCard from "@/components/ai/AIBriefingCard";
+import AIChatDrawer from "@/components/ai/AIChatDrawer";
+import AIOrb from "@/components/ai/AIOrb";
+import { buildBriefing } from "@/lib/ai-briefing";
 
 function InsightCard({ insight, index }: { insight: AnalysisInsight; index: number }) {
   const config = {
@@ -164,94 +171,26 @@ function FunnelViz({ stages }: { stages: FunnelStage[] }) {
   );
 }
 
-const FREE_REPORT_LIMIT = 1;
-const STORAGE_KEY = "adclarity_report_count";
-const CURRENT_MONTH_KEY = "adclarity_report_month";
+// Guest (not signed in) report counter lives in localStorage since guests
+// have no Supabase profile. Signed-in users are tracked server-side via the
+// usage table and can_create_report() RLS gate.
+const GUEST_STORAGE_KEY = "adclarity_report_count";
+const GUEST_MONTH_KEY = "adclarity_report_month";
 
-function getReportCount(): number {
-  const storedMonth = localStorage.getItem(CURRENT_MONTH_KEY);
+function getGuestReportCount(): number {
+  const storedMonth = localStorage.getItem(GUEST_MONTH_KEY);
   const thisMonth = new Date().toISOString().slice(0, 7);
   if (storedMonth !== thisMonth) {
-    localStorage.setItem(CURRENT_MONTH_KEY, thisMonth);
-    localStorage.setItem(STORAGE_KEY, "0");
+    localStorage.setItem(GUEST_MONTH_KEY, thisMonth);
+    localStorage.setItem(GUEST_STORAGE_KEY, "0");
     return 0;
   }
-  return parseInt(localStorage.getItem(STORAGE_KEY) ?? "0", 10);
+  return parseInt(localStorage.getItem(GUEST_STORAGE_KEY) ?? "0", 10);
 }
 
-function incrementReportCount() {
-  const count = getReportCount();
-  localStorage.setItem(STORAGE_KEY, String(count + 1));
-}
-
-function AdminLoginModal({ onClose }: { onClose: () => void }) {
-  const { login } = useAdmin();
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      await login(email.trim(), code.trim());
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Access denied");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="relative z-10 w-full max-w-sm rounded-2xl border border-white/10 bg-card shadow-2xl p-8"
-      >
-        <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors">
-          <X className="w-5 h-5" />
-        </button>
-        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-5">
-          <Lock className="w-5 h-5 text-primary" />
-        </div>
-        <h3 className="text-xl font-bold mb-1">Admin Access</h3>
-        <p className="text-sm text-muted-foreground mb-6">For internal testing and development only.</p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="admin@example.com"
-              className="w-full bg-muted/20 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 transition-colors"
-              required
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Access Code</label>
-            <input
-              type="password"
-              value={code}
-              onChange={e => setCode(e.target.value)}
-              placeholder="••••••••"
-              className="w-full bg-muted/20 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 transition-colors"
-              required
-            />
-          </div>
-          {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Verifying..." : "Sign In as Admin"}
-          </Button>
-        </form>
-      </motion.div>
-    </div>
-  );
+function incrementGuestReportCount() {
+  const count = getGuestReportCount();
+  localStorage.setItem(GUEST_STORAGE_KEY, String(count + 1));
 }
 
 function UpgradeModal({ onClose, onViewPricing }: { onClose: () => void; onViewPricing: () => void }) {
@@ -309,18 +248,50 @@ export default function Dashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [reportData, setReportData] = useState<ParsedReport | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [showAdminModal, setShowAdminModal] = useState(false);
   const [reportsUsed, setReportsUsed] = useState(0);
+  const [isSampleMode, setIsSampleMode] = useState(false);
+  const [showChatDrawer, setShowChatDrawer] = useState(false);
+  const { enabled: aiEnabled } = useAILayer();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const { isAdmin, isPro, session: adminSession, logout: adminLogout } = useAdmin();
-  const { user, isLoggedIn, reportLimit, logout: authLogout, login, signup } = useAuth();
+  const { user, isLoggedIn, reportLimit, logout: authLogout, login, signup, isAdmin, plan, session } = useAuth();
+  const isPro = plan === "pro" || isAdmin;
 
   const effectiveLimit = isPro ? Infinity : reportLimit;
 
+  // Read monthly usage for the signed-in user; guests use localStorage.
+  const fetchUsage = useCallback(async () => {
+    if (!session?.user) {
+      setReportsUsed(getGuestReportCount());
+      return;
+    }
+    const monthStart = new Date().toISOString().slice(0, 7) + "-01";
+    const { data } = await supabase
+      .from("usage")
+      .select("report_count")
+      .eq("user_id", session.user.id)
+      .eq("month", monthStart)
+      .maybeSingle();
+    setReportsUsed(data?.report_count ?? 0);
+  }, [session]);
+
   useEffect(() => {
-    setReportsUsed(getReportCount());
+    fetchUsage();
+  }, [fetchUsage]);
+
+  // Rehydrate a saved report when navigated from /reports.
+  useEffect(() => {
+    const raw = sessionStorage.getItem("adclarity_view_report");
+    if (!raw) return;
+    sessionStorage.removeItem("adclarity_view_report");
+    try {
+      const parsed = JSON.parse(raw) as ParsedReport;
+      setReportData(parsed);
+      setIsSampleMode(false);
+    } catch {
+      // Malformed payload — ignore.
+    }
   }, []);
 
   const handleFile = async (file: File) => {
@@ -333,27 +304,48 @@ export default function Dashboard() {
       return;
     }
 
-    // Admin/Pro users bypass the freemium gate entirely
-    if (!isPro) {
-      const count = getReportCount();
-      if (count >= effectiveLimit) {
-        // If they haven't signed up yet, nudge them to sign up (3 free reports)
-        if (!isLoggedIn) {
-          signup();
-        } else {
-          setShowUpgradeModal(true);
-        }
-        return;
-      }
+    // Guest gate: no account → 1 free report, then nudge to sign up.
+    if (!isLoggedIn && getGuestReportCount() >= effectiveLimit) {
+      signup();
+      return;
     }
 
     setIsProcessing(true);
     try {
       const parsed = await parseMetaReport(file);
-      if (!isPro) {
-        incrementReportCount();
-        setReportsUsed(getReportCount());
+
+      if (isLoggedIn && session?.user) {
+        // Server-side enforcement: RLS can_create_report() gates the insert.
+        // analysis jsonb holds the full ParsedReport so /reports can rehydrate.
+        const { error } = await supabase.from("reports").insert({
+          user_id: session.user.id,
+          filename: file.name,
+          analysis: parsed as never,
+          summary: parsed.summary as never,
+          date_range: parsed.dateRange,
+        });
+        if (error) {
+          const isLimitBlock =
+            error.code === "42501" ||
+            error.message.toLowerCase().includes("row-level security");
+          if (isLimitBlock && !isPro) {
+            setShowUpgradeModal(true);
+          } else {
+            toast({
+              title: "Could not save report",
+              description: error.message,
+              variant: "destructive",
+            });
+          }
+          return;
+        }
+        await fetchUsage();
+      } else {
+        // Guest: local-only. Do not persist to DB.
+        incrementGuestReportCount();
+        setReportsUsed(getGuestReportCount());
       }
+
       setReportData(parsed);
       toast({
         title: "Report parsed successfully!",
@@ -388,7 +380,15 @@ export default function Dashboard() {
     }
   }, []);
 
-  const resetState = () => setReportData(null);
+  const resetState = () => {
+    setReportData(null);
+    setIsSampleMode(false);
+  };
+
+  const showSample = () => {
+    setReportData(getSampleReport());
+    setIsSampleMode(true);
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
@@ -405,6 +405,9 @@ export default function Dashboard() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* AI Layer toggle — always visible so demo can switch live */}
+            <AIToggle />
+
             {/* Admin badge */}
             {isAdmin && (
               <span className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-full px-3 py-1">
@@ -423,6 +426,17 @@ export default function Dashboard() {
               </span>
             )}
 
+            {/* History link — only when signed in */}
+            {isLoggedIn && (
+              <button
+                onClick={() => navigate("/reports")}
+                className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-foreground/70 hover:text-foreground transition-colors border border-white/8 rounded-full px-3 py-1.5"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                History
+              </button>
+            )}
+
             {/* View Plans button — hidden for admin */}
             {!isAdmin && (
               <button
@@ -435,48 +449,28 @@ export default function Dashboard() {
             )}
 
             {/* Auth: sign in or user pill */}
-            {!isAdmin && (
-              isLoggedIn ? (
-                <div className="hidden sm:flex items-center gap-2">
-                  <button
-                    onClick={() => navigate("/account")}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate max-w-[120px]"
-                    title="My Account"
-                  >
-                    {user?.email}
-                  </button>
-                  <button
-                    onClick={authLogout}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors border border-white/5 rounded-full px-2.5 py-1"
-                  >
-                    Sign out
-                  </button>
-                </div>
-              ) : (
+            {isLoggedIn ? (
+              <div className="hidden sm:flex items-center gap-2">
                 <button
-                  onClick={() => login()}
-                  className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-foreground/70 hover:text-foreground transition-colors border border-white/8 rounded-full px-3 py-1.5"
+                  onClick={() => navigate("/account")}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate max-w-[120px]"
+                  title="My Account"
                 >
-                  Sign in
+                  {user?.email}
                 </button>
-              )
-            )}
-
-            {/* Admin login/logout */}
-            {isAdmin ? (
-              <button
-                onClick={() => adminLogout()}
-                className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors border border-white/5 rounded-full px-3 py-1.5"
-              >
-                Sign out
-              </button>
+                <button
+                  onClick={authLogout}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors border border-white/5 rounded-full px-2.5 py-1"
+                >
+                  Sign out
+                </button>
+              </div>
             ) : (
               <button
-                onClick={() => setShowAdminModal(true)}
-                className="text-xs text-muted-foreground/20 hover:text-muted-foreground/50 transition-colors px-1 py-1"
-                title="Admin login"
+                onClick={() => login()}
+                className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-foreground/70 hover:text-foreground transition-colors border border-white/8 rounded-full px-3 py-1.5"
               >
-                ·
+                Sign in
               </button>
             )}
             {reportData && (
@@ -505,7 +499,7 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         <AnimatePresence mode="wait">
           {!reportData ? (
-            <motion.div 
+            <motion.div
               key="upload"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -520,6 +514,29 @@ export default function Dashboard() {
                   Upload your raw Meta Ads Excel export and instantly get a simplified dashboard, actionable metrics, and a clean CSV you can actually read.
                 </p>
               </div>
+
+              {/* AI layer teaser — visible whenever the toggle is ON but no report is loaded */}
+              {aiEnabled && (
+                <div className="w-full max-w-3xl mb-10">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-violet-300">
+                      Preview — AI layer on sample data
+                    </p>
+                    <Button size="sm" variant="outline" onClick={showSample} className="border-violet-500/30 hover:bg-violet-500/10">
+                      <FlaskConical className="w-3.5 h-3.5 mr-1.5" />
+                      Open full sample
+                    </Button>
+                  </div>
+                  <AIBriefingCard
+                    briefing={buildBriefing(getSampleReport())}
+                    onOpenChat={() => {
+                      setReportData(getSampleReport());
+                      setIsSampleMode(true);
+                      setShowChatDrawer(true);
+                    }}
+                  />
+                </div>
+              )}
 
               <Card 
                 className={`w-full max-w-xl transition-all duration-300 border-2 ${
@@ -557,16 +574,27 @@ export default function Dashboard() {
                         className="hidden" 
                       />
                       
-                      <Button 
-                        size="lg" 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full sm:w-auto relative group overflow-hidden"
-                      >
-                        <span className="relative z-10 flex items-center">
-                          <FileSpreadsheet className="w-5 h-5 mr-2" />
-                          Select Excel File
-                        </span>
-                      </Button>
+                      <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        <Button
+                          size="lg"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full sm:w-auto relative group overflow-hidden"
+                        >
+                          <span className="relative z-10 flex items-center">
+                            <FileSpreadsheet className="w-5 h-5 mr-2" />
+                            Select Excel File
+                          </span>
+                        </Button>
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          onClick={showSample}
+                          className="w-full sm:w-auto border-white/10 hover:bg-white/5"
+                        >
+                          <FlaskConical className="w-5 h-5 mr-2" />
+                          See sample analysis
+                        </Button>
+                      </div>
 
                       <p className="text-xs text-muted-foreground mt-4">
                         {isLoggedIn
@@ -580,12 +608,38 @@ export default function Dashboard() {
 
             </motion.div>
           ) : (
-            <motion.div 
+            <motion.div
               key="dashboard"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="space-y-8"
             >
+              {isSampleMode && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-violet-500/20 bg-violet-500/5 px-4 py-3 text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="w-4 h-4 text-violet-400" />
+                    <span className="text-violet-200">
+                      This is sample data. Upload your Meta Ads export to analyze your own account.
+                    </span>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={resetState} className="border-violet-500/30 hover:bg-violet-500/10">
+                    Upload your report
+                  </Button>
+                </motion.div>
+              )}
+
+              {/* AI LAYER — briefing on top of the report when toggle is on */}
+              {aiEnabled && (
+                <AIBriefingCard
+                  briefing={buildBriefing(reportData)}
+                  onOpenChat={() => setShowChatDrawer(true)}
+                />
+              )}
+
               {/* SUMMARY CARDS */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
@@ -1019,12 +1073,27 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* Admin login modal */}
-      <AnimatePresence>
-        {showAdminModal && (
-          <AdminLoginModal onClose={() => setShowAdminModal(false)} />
-        )}
-      </AnimatePresence>
+      {/* Floating AI orb — visible on dashboard view when AI layer is on */}
+      {aiEnabled && reportData && (
+        <div className="fixed bottom-6 right-6 z-30">
+          <div className="flex items-center gap-2 rounded-full bg-[#0d1117]/90 backdrop-blur-lg border border-white/10 pr-4 pl-1 py-1 shadow-[0_0_40px_-10px_rgba(139,92,246,0.4)]">
+            <AIOrb size="md" onClick={() => setShowChatDrawer(true)} />
+            <span className="text-xs font-semibold text-foreground/80 hidden sm:inline">
+              Ask the AI
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* AI chat drawer */}
+      {reportData && (
+        <AIChatDrawer
+          open={showChatDrawer}
+          onClose={() => setShowChatDrawer(false)}
+          report={reportData}
+          briefing={buildBriefing(reportData)}
+        />
+      )}
 
       {/* Footer */}
       <footer className="border-t border-white/5 mt-20 py-6">

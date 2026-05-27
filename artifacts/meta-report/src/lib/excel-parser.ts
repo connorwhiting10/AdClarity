@@ -124,7 +124,7 @@ export interface ParsedReport {
   analysis: ReportAnalysis;
 }
 
-function generateAnalysis(
+export function generateAnalysis(
   summary: ParsedReport['summary'],
   byCampaign: MetricSummary[],
   byAge: MetricSummary[],
@@ -349,12 +349,13 @@ function generateAnalysis(
   }
 
   // ── AUDIENCE SUMMARY ──────────────────────────────────────────────────────
-  const topAgesFormatted = byAge
-    .filter(a => a.name !== 'Unknown' && a.Results > 0)
-    .slice(0, 3)
-    .map(a => `${a.name} (${a.Results} leads)`).join(', ');
+  const topAgeRows = byAge.filter(a => a.name !== 'Unknown' && a.Results > 0).slice(0, 3);
+  const hasAgeBreakdown = topAgeRows.length > 0;
+  const topAgesFormatted = topAgeRows.map(a => `${a.name} (${a.Results} leads)`).join(', ');
 
-  const audienceSummary = `Your ads are reaching people across multiple age groups. The strongest response is coming from the ${topAgeByResults?.name ?? 'N/A'} bracket, which is generating the most leads overall. Top three age groups by lead volume: ${topAgesFormatted}. ${topAgeByEfficiency ? `The most cost-efficient conversions are happening with the ${topAgeByEfficiency.name} group at R${topAgeByEfficiency.CostPerResult.toFixed(2)} per lead — your best-value audience.` : ''} This demographic profile suggests your core customer is likely a ${topAgeByResults?.name ?? ''} adult who is increasingly focused on health, sleep quality, and long-term wellbeing — a strong fit for a premium mattress product.`;
+  const audienceSummary = hasAgeBreakdown
+    ? `Your ads are reaching people across multiple age groups. The strongest response is coming from the ${topAgeByResults!.name} bracket, which is generating the most leads overall. Top age groups by lead volume: ${topAgesFormatted}.${topAgeByEfficiency ? ` The most cost-efficient conversions are happening with the ${topAgeByEfficiency.name} group at R${topAgeByEfficiency.CostPerResult.toFixed(2)} per lead — your best-value audience.` : ''}`
+    : `This export does not include an age breakdown, so a demographic analysis is not available. Re-export the report from Meta Ads Manager with "Age" added as a breakdown to enable audience insights.`;
 
   // ── SCALING OPPORTUNITIES ─────────────────────────────────────────────────
   const scalingOpportunities: string[] = [];
@@ -448,29 +449,26 @@ export async function parseMetaReport(file: File): Promise<ParsedReport> {
           : "All Time";
 
         const simplifiedData: SimplifiedRow[] = [];
-        let totalSpend = 0;
-        let totalResults = 0;
-        let totalImpressions = 0;
-        let totalReach = 0;
 
-        const campaignMap = new Map<string, MetricSummary>();
-        const ageMap = new Map<string, MetricSummary>();
+        // Reach is unique users per row — non-additive across time periods (weeks/months).
+        // Aggregate by audience unit (campaign|adset|age) first: SUM additive metrics across
+        // time-series rows, MAX reach (conservative lower bound for unique users in that unit).
+        // Totals and group summaries are then built from these unit aggregates.
+        type Unit = { campaign: string; adSet: string; age: string;
+          reachMax: number; impressions: number; results: number; spend: number };
+        const unitMap = new Map<string, Unit>();
 
         rawData.forEach(row => {
-          // Parse numbers safely
           const reach = Number(row["Reach"]) || 0;
           const impressions = Number(row["Impressions"]) || 0;
           const results = Number(row["Results"]) || 0;
           const spend = Number(row["Amount spent (ZAR)"]) || 0;
-          
-          // Skip completely empty rows that might be parsed at the end
+
           if (!row["Campaign name"] && spend === 0 && impressions === 0) return;
 
           const cleanName = cleanCampaignName(row["Campaign name"]);
           const adSet = row["Ad set name"] || "Unknown";
           const age = row["Age"] || "Unknown";
-
-          const costPerResult = results > 0 ? spend / results : 0;
 
           simplifiedData.push({
             Campaign: cleanName,
@@ -480,40 +478,56 @@ export async function parseMetaReport(file: File): Promise<ParsedReport> {
             Impressions: impressions,
             Results: results,
             Spend: spend,
-            CostPerResult: costPerResult
+            CostPerResult: results > 0 ? spend / results : 0
           });
 
-          // Global Totals
-          totalSpend += spend;
-          totalResults += results;
-          totalImpressions += impressions;
-          totalReach += reach;
-
-          // Aggregate by Campaign
-          if (!campaignMap.has(cleanName)) {
-            campaignMap.set(cleanName, { name: cleanName, Reach: 0, Impressions: 0, Results: 0, Spend: 0, CostPerResult: 0 });
+          const unitKey = `${cleanName}||${adSet}||${age}`;
+          const u = unitMap.get(unitKey);
+          if (u) {
+            u.reachMax = Math.max(u.reachMax, reach);
+            u.impressions += impressions;
+            u.results += results;
+            u.spend += spend;
+          } else {
+            unitMap.set(unitKey, { campaign: cleanName, adSet, age,
+              reachMax: reach, impressions, results, spend });
           }
-          const cData = campaignMap.get(cleanName)!;
-          cData.Reach += reach;
-          cData.Impressions += impressions;
-          cData.Results += results;
-          cData.Spend += spend;
-          cData.CostPerResult = cData.Results > 0 ? cData.Spend / cData.Results : 0;
-
-          // Aggregate by Age
-          if (!ageMap.has(age)) {
-            ageMap.set(age, { name: age, Reach: 0, Impressions: 0, Results: 0, Spend: 0, CostPerResult: 0 });
-          }
-          const aData = ageMap.get(age)!;
-          aData.Reach += reach;
-          aData.Impressions += impressions;
-          aData.Results += results;
-          aData.Spend += spend;
-          aData.CostPerResult = aData.Results > 0 ? aData.Spend / aData.Results : 0;
         });
 
-        // Sort summaries
-        const byCampaign = Array.from(campaignMap.values()).sort((a, b) => b.Spend - a.Spend);
+        let totalSpend = 0;
+        let totalResults = 0;
+        let totalImpressions = 0;
+        let totalReach = 0;
+        const campaignMap = new Map<string, MetricSummary>();
+        const ageMap = new Map<string, MetricSummary>();
+
+        unitMap.forEach(u => {
+          totalSpend += u.spend;
+          totalResults += u.results;
+          totalImpressions += u.impressions;
+          totalReach += u.reachMax;
+
+          const cData = campaignMap.get(u.campaign) ??
+            { name: u.campaign, Reach: 0, Impressions: 0, Results: 0, Spend: 0, CostPerResult: 0 };
+          cData.Reach += u.reachMax;
+          cData.Impressions += u.impressions;
+          cData.Results += u.results;
+          cData.Spend += u.spend;
+          cData.CostPerResult = cData.Results > 0 ? cData.Spend / cData.Results : 0;
+          campaignMap.set(u.campaign, cData);
+
+          const aData = ageMap.get(u.age) ??
+            { name: u.age, Reach: 0, Impressions: 0, Results: 0, Spend: 0, CostPerResult: 0 };
+          aData.Reach += u.reachMax;
+          aData.Impressions += u.impressions;
+          aData.Results += u.results;
+          aData.Spend += u.spend;
+          aData.CostPerResult = aData.Results > 0 ? aData.Spend / aData.Results : 0;
+          ageMap.set(u.age, aData);
+        });
+
+        // Sort byCampaign by Results desc so table order matches analysis.topCampaign.
+        const byCampaign = Array.from(campaignMap.values()).sort((a, b) => b.Results - a.Results);
         const byAge = Array.from(ageMap.values()).sort((a, b) => b.Results - a.Results);
 
         const parsedSummary = { totalSpend, totalResults, totalImpressions, totalReach };
